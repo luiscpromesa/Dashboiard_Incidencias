@@ -14,7 +14,7 @@
 
 const CONFIG = {
   // 👇 CAMBIA ESTO por la URL de tu servicio en Render
-  API_URL: "https://incidencias-api.onrender.com",
+  API_URL: "https://backend-qp3b.onrender.com",
 
   // Nombre con el que se guarda el token en el navegador
   CLAVE_TOKEN: "incidencias_token",
