@@ -586,6 +586,37 @@ window.UI = (() => {
     recordar();
   }
 
+  /**
+   * Campos de hora. El <input type="time"> siempre devuelve "HH:MM" en 24 h,
+   * pero algunos navegadores lo DIBUJAN como 08:30 a.m. según el idioma del
+   * sistema. Para que no haya dudas, debajo del campo se muestra el valor
+   * normalizado a 24 horas. No se toca ni el valor ni el nombre del campo.
+   */
+  function iniciarCamposHora() {
+    sels(".lectura-hora[data-para]").forEach((lectura) => {
+      const campo = document.getElementById(lectura.dataset.para);
+      if (!campo) return;
+      const textoOriginal = lectura.innerHTML;
+
+      const refrescar = () => {
+        const valor = campo.value;                 // siempre "HH:MM" o ""
+        if (!valor) {
+          lectura.innerHTML = textoOriginal;
+          lectura.classList.remove("con-valor");
+          return;
+        }
+        lectura.innerHTML =
+          `${icono("reloj", "ico ico-sm")} <span class="valor-24h">${escapar(valor)}</span> h`;
+        lectura.classList.add("con-valor");
+      };
+
+      campo.addEventListener("input", refrescar);
+      campo.addEventListener("change", refrescar);
+      campo.closest("form")?.addEventListener("reset", () => setTimeout(refrescar, 0));
+      refrescar();
+    });
+  }
+
   /* =======================================================================
      7. Evidencias: arrastrar, soltar y vista previa
   ======================================================================= */
@@ -748,9 +779,120 @@ window.UI = (() => {
     },
   };
 
-  /** Devuelve el layout del backend vestido con la identidad de PROMESA. */
-  function temaGrafica(layout = {}) {
-    return Object.assign({ template: PLANTILLA_PLOTLY }, layout);
+  const estrecho = () => window.innerWidth < 768;
+
+  /** Acorta un texto largo dejando puntos suspensivos. */
+  function abreviar(texto, maximo) {
+    const t = String(texto ?? "");
+    return t.length > maximo ? t.slice(0, maximo - 1).trimEnd() + "…" : t;
+  }
+
+  /**
+   * Lee las categorías de un eje. En barras horizontales van en `y`;
+   * en el resto, en `x`. Solo interesan cuando son texto.
+   */
+  function categoriasDe(datos, eje) {
+    const valores = [];
+    for (const traza of datos || []) {
+      const serie = traza[eje];
+      if (!Array.isArray(serie)) continue;
+      for (const v of serie) if (typeof v === "string" && !valores.includes(v)) valores.push(v);
+    }
+    return valores;
+  }
+
+  /** ¿La gráfica es de barras horizontales? */
+  const esHorizontal = (datos) =>
+    (datos || []).some((t) => t.type === "bar" && t.orientation === "h");
+
+  /**
+   * Devuelve el layout del backend adaptado para que nada se encime:
+   *
+   *  - El título sale del lienzo (ya está en la cabecera de la tarjeta), que
+   *    era la causa principal de que se montara sobre la gráfica.
+   *  - Se quitan `height` y `width` fijos: el tamaño lo manda el contenedor,
+   *    y así la gráfica no se sale de su tarjeta ni se deforma al
+   *    redimensionar la ventana.
+   *  - `automargin` en ambos ejes reserva el espacio que necesiten las
+   *    etiquetas, y los márgenes base se dejan pequeños para que no sobre.
+   *  - Las etiquetas largas se rotan (barras verticales) o se abrevian
+   *    (barras horizontales). El nombre completo sigue apareciendo al pasar
+   *    el cursor, porque los datos no se tocan.
+   *  - La leyenda solo se dibuja si hay más de una serie, y siempre debajo.
+   *
+   * No se modifica el arreglo `datos`: todos los ajustes son de layout.
+   */
+  function temaGrafica(layout = {}, datos = []) {
+    const l = Object.assign({}, layout);
+
+    // El título vive en la cabecera de la tarjeta (app.js lo reutiliza)
+    delete l.title;
+    delete l.titlefont;
+
+    // El contenedor manda el tamaño
+    delete l.height;
+    delete l.width;
+    l.autosize = true;
+
+    l.template = PLANTILLA_PLOTLY;
+    l.hovermode = l.hovermode || "closest";
+    l.showlegend = (datos || []).length > 1;
+    l.legend = Object.assign({}, l.legend, {
+      orientation: "h", y: -0.22, yanchor: "top", x: 0, xanchor: "left",
+      font: { size: estrecho() ? 10 : 11, color: "#667085" },
+    });
+
+    // Márgenes pequeños: automargin añade lo que haga falta
+    l.margin = Object.assign({ l: 8, r: 12, t: 8, b: 8, pad: 4 }, l.margin, { autoexpand: true });
+
+    const horizontal = esHorizontal(datos);
+    const tamTick = estrecho() ? 10 : 11;
+    const ejeBase = {
+      automargin: true,
+      tickfont: { size: tamTick, color: "#667085" },
+      gridcolor: "#EDF1EF",
+      zerolinecolor: "#DDE5E1",
+      linecolor: "#DDE5E1",
+    };
+
+    l.xaxis = Object.assign({}, l.xaxis, ejeBase);
+    l.yaxis = Object.assign({}, l.yaxis, ejeBase);
+
+    if (horizontal) {
+      // Etiquetas largas en el eje vertical: se abrevian para que la gráfica
+      // no se quede sin ancho. El texto completo sigue en el tooltip.
+      const categorias = categoriasDe(datos, "y");
+      const tope = estrecho() ? 14 : 22;
+      if (categorias.some((c) => c.length > tope)) {
+        l.yaxis.tickmode = "array";
+        l.yaxis.tickvals = categorias;
+        l.yaxis.ticktext = categorias.map((c) => abreviar(c, tope));
+      }
+      l.yaxis.ticklabeloverflow = "allow";
+    } else {
+      // Barras/líneas verticales: se rotan las etiquetas si son largas o si
+      // hay muchas, para que no se enciman entre ellas.
+      const categorias = categoriasDe(datos, "x");
+      const largas = categorias.some((c) => c.length > 8);
+      if (categorias.length > 6 || largas) {
+        l.xaxis.tickangle = estrecho() ? -55 : -35;
+      }
+      if (categorias.length > 12) l.xaxis.dtick = 1;
+    }
+
+    return l;
+  }
+
+  /**
+   * Alto en píxeles que necesita una gráfica. Las barras horizontales crecen
+   * con el número de categorías: así nunca quedan aplastadas unas sobre
+   * otras. La tarjeta crece y la página se desplaza, en vez de encimarse.
+   */
+  function alturaGrafica(datos = []) {
+    const base = estrecho() ? 280 : 330;
+    if (!esHorizontal(datos)) return base;
+    const cuantas = categoriasDe(datos, "y").length;
+    return Math.max(base, Math.min(30 * cuantas + 110, 620));
   }
 
   /** Configuración común de Plotly (sin barra de herramientas, responsiva). */
@@ -766,6 +908,22 @@ window.UI = (() => {
       try { Plotly.Plots.resize(div); } catch (_) { /* aún no dibujada */ }
     });
   }
+
+  /* Un ResizeObserver es más fiable que el evento `resize` de la ventana:
+     también reacciona a que se contraiga el menú lateral o se pliegue el
+     panel de filtros, que cambian el ancho sin cambiar el de la ventana. */
+  const vigilante = typeof ResizeObserver !== "undefined"
+    ? new ResizeObserver(() => {
+        clearTimeout(vigilante._t);
+        vigilante._t = setTimeout(redimensionarGraficas, 120);
+      })
+    : null;
+
+  /** app.js la llama tras dibujar, para que el lienzo quede vigilado. */
+  function vigilarGrafica(lienzo) {
+    if (vigilante && lienzo) vigilante.observe(lienzo);
+  }
+
   window.addEventListener("resize", () => {
     clearTimeout(redimensionarGraficas._t);
     redimensionarGraficas._t = setTimeout(redimensionarGraficas, 200);
@@ -798,6 +956,7 @@ window.UI = (() => {
     iniciarEncabezado();
     iniciarFiltros();
     iniciarFormularios();
+    iniciarCamposHora();
     iniciarEvidencias();
 
     conectarBuscadorDeSelect("#buscar-cliente", "#sel-cliente-servicio");
@@ -841,6 +1000,8 @@ window.UI = (() => {
     pintarLeyendaGravedad,
     conectarVistaGravedad,
     temaGrafica,
+    alturaGrafica,
+    vigilarGrafica,
     CONFIG_GRAFICA,
     esqueletosDashboard,
     marcarActualizacion,

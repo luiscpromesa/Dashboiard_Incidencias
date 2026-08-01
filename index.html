@@ -534,14 +534,32 @@
                 <label class="form-label" for="sel-tipo-servicio">Tipo de servicio</label>
                 <select class="form-select" name="tipo_servicio" id="sel-tipo-servicio"></select>
               </div>
+              <!-- Campos de hora: se conserva <input type="time">, que siempre
+                   entrega el valor como "HH:MM" de 24 horas al backend, sin
+                   importar cómo lo dibuje el sistema operativo. El añadido es
+                   visual: icono de reloj, más espacio y una lectura del valor
+                   normalizado a 24 h debajo del campo. -->
               <div class="col-md-4">
                 <label class="form-label" for="s-hora-prog">Hora programada</label>
-                <input type="time" class="form-control" name="hora_programada" id="s-hora-prog">
+                <div class="campo-hora">
+                  <svg class="ico" aria-hidden="true"><use href="#i-reloj"></use></svg>
+                  <input type="time" class="form-control" name="hora_programada"
+                         id="s-hora-prog" step="60" placeholder="08:30"
+                         aria-describedby="lectura-hora-prog">
+                </div>
+                <div class="form-text lectura-hora" id="lectura-hora-prog"
+                     data-para="s-hora-prog">Formato de 24 horas (por ejemplo 08:30).</div>
               </div>
               <div class="col-md-4">
                 <label class="form-label" for="s-hora-real">Hora real de llegada</label>
-                <input type="time" class="form-control" name="hora_real" id="s-hora-real">
-                <div class="form-text">Si es posterior a la programada, cuenta como retraso.</div>
+                <div class="campo-hora">
+                  <svg class="ico" aria-hidden="true"><use href="#i-reloj"></use></svg>
+                  <input type="time" class="form-control" name="hora_real"
+                         id="s-hora-real" step="60" placeholder="16:45"
+                         aria-describedby="lectura-hora-real">
+                </div>
+                <div class="form-text lectura-hora" id="lectura-hora-real"
+                     data-para="s-hora-real">Si es posterior a la programada, cuenta como retraso.</div>
               </div>
             </div>
           </fieldset>
@@ -571,7 +589,15 @@
               </div>
               <div class="col-md-4">
                 <label class="form-label" for="s-responsable">Responsable</label>
-                <input type="text" class="form-control" name="responsable" id="s-responsable">
+                <!-- Lista cerrada: solo se puede elegir a una de estas tres
+                     personas. El campo sigue enviándose como `responsable`,
+                     con el nombre en texto, igual que antes. -->
+                <select class="form-select" name="responsable" id="s-responsable">
+                  <option value="">Selecciona un responsable…</option>
+                  <option value="Paola Sosa">Paola Sosa</option>
+                  <option value="Karen Escalona">Karen Escalona</option>
+                  <option value="Claudia Franco">Claudia Franco</option>
+                </select>
               </div>
               <div class="col-12">
                 <label class="form-label" for="s-observaciones">Observaciones</label>

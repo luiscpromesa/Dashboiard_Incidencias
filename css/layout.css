@@ -341,11 +341,15 @@ body.lateral-contraido .barra-lateral .nav-link:focus-visible::after { opacity: 
   grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
   margin-bottom: 1.25rem;
 }
+/* `minmax(0, …)` es lo que impide que una gráfica ancha estire su columna y
+   se salga de la tarjeta: sin él, el mínimo implícito es `auto`. */
 .rejilla-graficas {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+  align-items: start;
 }
+.rejilla-graficas > * { min-width: 0; }
 
 /* ===========================================================================
    4. Panel de filtros (plegable)

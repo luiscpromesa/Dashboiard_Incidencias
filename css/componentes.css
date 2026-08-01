@@ -349,6 +349,70 @@
 }
 .form-check-label { font-size: var(--txt-base); }
 
+/* --- Campos de hora ------------------------------------------------------
+   El valor sigue siendo el de <input type="time"> ("HH:MM", 24 h). Aquí solo
+   se le da aire, un icono de reloj y un control de selección más cómodo,
+   también con el dedo. */
+.campo-hora {
+  position: relative;
+  display: block;
+}
+.campo-hora > .ico {
+  position: absolute;
+  left: .7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--verde);
+  pointer-events: none;
+  z-index: 1;
+}
+.campo-hora input[type="time"] {
+  width: 100%;
+  padding: .6rem .6rem .6rem 2.35rem;
+  font-size: var(--txt-md);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+  line-height: 1.35;
+  min-height: 46px;          /* objetivo táctil cómodo en móvil */
+  background: var(--superficie);
+}
+/* Safari/iOS encogen y desalinean el campo si no se fuerza la apariencia */
+.campo-hora input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+  min-height: 1.35em;        /* evita que el valor se corte */
+}
+.campo-hora input[type="time"]::-webkit-datetime-edit {
+  padding: 0;
+  line-height: 1.35;
+}
+/* El icono nativo del selector se agranda y se tiñe de verde al pasar */
+.campo-hora input[type="time"]::-webkit-calendar-picker-indicator {
+  width: 20px;
+  height: 20px;
+  padding: 2px;
+  cursor: pointer;
+  border-radius: 4px;
+  opacity: .55;
+  transition: opacity var(--trans), background var(--trans);
+}
+.campo-hora input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  background: var(--verde-claro);
+}
+
+/* Lectura del valor normalizado a 24 horas debajo del campo */
+.lectura-hora.con-valor {
+  color: var(--verde-oscuro);
+  font-weight: 600;
+}
+.lectura-hora .valor-24h {
+  font-variant-numeric: tabular-nums;
+  background: var(--verde-claro);
+  border-radius: 4px;
+  padding: 0 .3rem;
+}
+
 /* Marca de campo obligatorio */
 .obligatorio {
   color: var(--peligro);
@@ -787,25 +851,47 @@
    11. Gráficas
 =========================================================================== */
 .tarjeta-grafica {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;                 /* deja que el lienzo encoja dentro de la rejilla */
   background: var(--superficie);
   border: 1px solid var(--borde);
   border-radius: var(--radio);
   box-shadow: var(--sombra-sm);
-  overflow: hidden;
+  /* Sin overflow:hidden — recortaba los tooltips de Plotly al salirse */
   animation: aparecer var(--trans-lenta) both;
 }
+
+/* El título va aquí, fuera del lienzo: dentro se montaba sobre la gráfica */
 .tarjeta-grafica .cabecera {
   display: flex;
   align-items: center;
   gap: .5rem;
-  padding: .75rem 1rem .25rem;
+  padding: .875rem 1.125rem .25rem;
+  margin: 0;
   font-size: var(--txt-sm);
   font-weight: 700;
+  line-height: 1.35;
   color: var(--verde-oscuro);
 }
 .tarjeta-grafica .cabecera .ico { color: var(--verde); }
-.tarjeta-grafica .lienzo { padding: 0 .25rem .25rem; }
+.tarjeta-grafica .cabecera span { min-width: 0; }
+
+/* La altura la fija app.js según cuántas categorías haya; Plotly se ajusta
+   al contenedor gracias a responsive:true y autosize. */
+.tarjeta-grafica .lienzo {
+  padding: .25rem .5rem .75rem;
+  min-width: 0;
+}
+.tarjeta-grafica .lienzo > div {
+  width: 100%;
+  height: 100%;
+}
 .tarjeta-grafica .modebar { display: none; }
+
+/* Los globos de Plotly deben poder salirse de la tarjeta sin cortarse */
+.tarjeta-grafica .hoverlayer,
+.tarjeta-grafica .svg-container { overflow: visible !important; }
 
 /* ===========================================================================
    12. Pantalla de acceso

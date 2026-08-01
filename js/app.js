@@ -424,21 +424,38 @@ function pintarGraficas(graficas) {
   let dibujadas = 0;
   for (const nombre of orden) {
     if (!graficas[nombre]) continue;
-    const [titulo, icono] = CABECERA_GRAFICA[nombre] || [nombre, "panel"];
+    const datos = graficas[nombre].data || [];
+    const layout = graficas[nombre].layout || {};
+
+    // El título se saca del lienzo para que no se monte sobre la gráfica.
+    // Si el backend mandó uno, ese manda; si no, se usa el de la tabla.
+    const [porDefecto, icono] = CABECERA_GRAFICA[nombre] || [nombre, "panel"];
+    const delBackend = typeof layout.title === "string"
+      ? layout.title
+      : layout.title?.text;
+    const titulo = (delBackend || "").trim() || porDefecto;
+
+    // Las barras horizontales crecen con el número de categorías, para que
+    // las etiquetas no se aplasten unas sobre otras.
+    const alto = UI?.alturaGrafica(datos) || 330;
 
     const tarjeta = document.createElement("section");
     tarjeta.className = "tarjeta-grafica";
     tarjeta.style.animationDelay = `${Math.min(dibujadas, 6) * 40}ms`;
     tarjeta.innerHTML = `
-      <h3 class="cabecera">${UI?.icono(icono) || ""}${titulo}</h3>
-      <div class="lienzo"><div id="g-${nombre}" role="img"
-        aria-label="Gráfica: ${titulo}"></div></div>`;
+      <h3 class="cabecera">${UI?.icono(icono) || ""}<span>${UI?.escapar(titulo) || titulo}</span></h3>
+      <div class="lienzo" style="height:${alto}px"><div id="g-${nombre}" role="img"
+        aria-label="Gráfica: ${UI?.escapar(titulo) || titulo}"></div></div>`;
     contenedor.appendChild(tarjeta);
 
     Plotly.newPlot(`g-${nombre}`,
-                   graficas[nombre].data,
-                   UI?.temaGrafica(graficas[nombre].layout) || graficas[nombre].layout,
+                   datos,
+                   UI?.temaGrafica(layout, datos) || layout,
                    UI?.CONFIG_GRAFICA || { responsive: true, displayModeBar: false });
+
+    // Se vigila el contenedor: al contraer el menú o plegar los filtros
+    // cambia el ancho sin que cambie el de la ventana.
+    UI?.vigilarGrafica(tarjeta.querySelector(".lienzo"));
     dibujadas++;
   }
 
