@@ -21,7 +21,9 @@
      10. Esqueletos de carga
 =========================================================================== */
 
-const UI = (() => {
+/* Se publica en `window` a propósito: app.js lo lee con `window.UI || null`,
+   de modo que si este archivo fallara al cargar, app.js no se rompe. */
+window.UI = (() => {
   "use strict";
 
   const sel  = (s, raiz = document) => raiz.querySelector(s);
@@ -64,6 +66,19 @@ const UI = (() => {
   ======================================================================= */
   const esMovil = () => window.matchMedia("(max-width: 991.98px)").matches;
 
+  /* Preferencias de la interfaz. Se accede a localStorage con red de
+     seguridad: al abrir el archivo directamente desde el disco (file://) o
+     con las cookies bloqueadas, leer o escribir ahí lanza SecurityError y
+     tumbaría toda la capa visual. */
+  const preferencia = {
+    leer(clave) {
+      try { return localStorage.getItem(clave); } catch (_) { return null; }
+    },
+    guardar(clave, valor) {
+      try { localStorage.setItem(clave, valor); } catch (_) { /* sin persistencia */ }
+    },
+  };
+
   function alternarMenu() {
     const cuerpo = document.body;
     if (esMovil()) {
@@ -72,7 +87,7 @@ const UI = (() => {
     } else {
       cuerpo.classList.toggle("lateral-contraido");
       // Se recuerda la preferencia entre visitas
-      localStorage.setItem("ui_lateral_contraido",
+      preferencia.guardar("ui_lateral_contraido",
         cuerpo.classList.contains("lateral-contraido") ? "1" : "0");
     }
     sel("#btn-menu")?.setAttribute("aria-expanded",
@@ -88,7 +103,7 @@ const UI = (() => {
   }
 
   function iniciarMenu() {
-    if (localStorage.getItem("ui_lateral_contraido") === "1" && !esMovil()) {
+    if (preferencia.leer("ui_lateral_contraido") === "1" && !esMovil()) {
       document.body.classList.add("lateral-contraido");
     }
     sel("#btn-menu")?.addEventListener("click", alternarMenu);

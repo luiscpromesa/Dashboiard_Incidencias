@@ -18,6 +18,13 @@
    funcionando aunque ui.js no llegue a cargar.
 =========================================================================== */
 
+/* Capa visual (js/ui.js). Se toma de `window` y se admite que falte: si ese
+   archivo no cargara, `UI` vale null y todos los `UI?.…` de más abajo no
+   hacen nada, pero el sistema sigue registrando y consultando datos.
+   (Un `const UI` en ui.js no serviría: al no estar declarado, `UI?.` lanzaría
+   ReferenceError en vez de omitirse.) */
+const UI = window.UI || null;
+
 let CATALOGOS = {};       // Gravedades, colores, tipos de servicio, etc.
 let CLIENTES = [];
 let TIPOS = [];
