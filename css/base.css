@@ -1,0 +1,202 @@
+/* ===========================================================================
+   base.css — Fundamentos del diseño
+   ===========================================================================
+   Define la identidad gráfica de Grupo PROMESA: paleta corporativa, colores
+   operativos de gravedad, tipografía, espaciados, radios y sombras.
+   Todo lo demás (layout.css, componentes.css, estilos.css) consume estas
+   variables; si algún día cambia la marca, se cambia aquí y nada más.
+=========================================================================== */
+
+:root {
+  /* --- Paleta corporativa ------------------------------------------------ */
+  --verde: #068C45;          /* Verde principal del logotipo               */
+  --verde-oscuro: #045F35;   /* Encabezados y estados activos             */
+  --verde-claro: #EAF7F0;    /* Fondos de apoyo, resaltados suaves        */
+  --azul: #134B8D;           /* Azul corporativo (marca de hojas)         */
+  --azul-claro: #EAF1F8;     /* Fondo de apoyo azul                       */
+
+  /* --- Superficies y texto ---------------------------------------------- */
+  --fondo: #F4F6F5;          /* Fondo general de la aplicación            */
+  --superficie: #FFFFFF;     /* Tarjetas, paneles, tablas                 */
+  --superficie-2: #FAFBFA;   /* Franjas alternas, encabezados de tabla    */
+  --texto: #1F2933;          /* Texto principal                           */
+  --texto-2: #667085;        /* Texto secundario, etiquetas               */
+  --borde: #DDE5E1;          /* Bordes suaves                             */
+  --borde-fuerte: #C6D2CB;   /* Bordes de campos con foco/hover           */
+
+  /* --- Colores operativos de gravedad -----------------------------------
+     OJO: son de comunicación, no de navegación. El backend manda los
+     valores reales en CATALOGOS.colores_gravedad; estos son el respaldo. */
+  --grav-rojo: #D92D20;
+  --grav-naranja: #E8730C;
+  --grav-amarillo: #EAB308;
+  --grav-verde: #10A34A;
+
+  /* --- Estados de la interfaz ------------------------------------------- */
+  --exito: #068C45;
+  --exito-fondo: #EAF7F0;
+  --peligro: #D92D20;
+  --peligro-fondo: #FEF3F2;
+  --aviso: #B54708;
+  --aviso-fondo: #FFFAEB;
+  --info: #134B8D;
+  --info-fondo: #EAF1F8;
+
+  /* --- Tipografía -------------------------------------------------------- */
+  --fuente: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue",
+            Arial, sans-serif;
+  --txt-xs: 0.75rem;
+  --txt-sm: 0.8125rem;
+  --txt-base: 0.9375rem;
+  --txt-md: 1.0625rem;
+  --txt-lg: 1.25rem;
+  --txt-xl: 1.75rem;
+  --txt-2xl: 2.125rem;
+
+  /* --- Radios y sombras (moderados: nada exagerado) ---------------------- */
+  --radio-sm: 8px;
+  --radio: 12px;
+  --radio-lg: 16px;
+  --radio-full: 999px;
+  --sombra-xs: 0 1px 2px rgba(31, 41, 51, .05);
+  --sombra-sm: 0 1px 3px rgba(31, 41, 51, .06), 0 1px 2px rgba(31, 41, 51, .04);
+  --sombra: 0 4px 12px rgba(31, 41, 51, .07), 0 1px 3px rgba(31, 41, 51, .04);
+  --sombra-md: 0 10px 24px rgba(31, 41, 51, .09);
+
+  /* --- Medidas del armazón ---------------------------------------------- */
+  --lateral-ancho: 264px;
+  --lateral-ancho-min: 76px;
+  --superior-alto: 68px;
+
+  /* --- Transiciones discretas ------------------------------------------- */
+  --trans: 160ms cubic-bezier(.4, 0, .2, 1);
+  --trans-lenta: 260ms cubic-bezier(.4, 0, .2, 1);
+}
+
+/* Respeta a quien pidió menos movimiento en su sistema operativo. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Tipografía y superficie base
+--------------------------------------------------------------------------- */
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--fuente);
+  font-size: var(--txt-base);
+  color: var(--texto);
+  background: var(--fondo);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--verde-oscuro);
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+a { color: var(--azul); text-decoration: none; }
+a:hover { color: var(--verde-oscuro); text-decoration: underline; }
+
+code {
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+  padding: .1em .35em;
+  border-radius: 4px;
+  font-size: .9em;
+}
+
+/* ---------------------------------------------------------------------------
+   Accesibilidad: foco siempre visible y salto al contenido
+--------------------------------------------------------------------------- */
+:focus-visible {
+  outline: 3px solid rgba(6, 140, 69, .45);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.salto-contenido {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 3000;
+  background: var(--verde);
+  color: #fff;
+  padding: .6rem 1rem;
+  border-radius: 0 0 var(--radio-sm) 0;
+  font-weight: 600;
+}
+.salto-contenido:focus {
+  left: 0;
+  color: #fff;
+  text-decoration: none;
+}
+
+/* Texto solo para lectores de pantalla. */
+.solo-lectores {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Iconografía (sprite SVG en línea, sin librerías externas)
+--------------------------------------------------------------------------- */
+.ico {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -.2em;
+}
+.ico-sm { width: 16px; height: 16px; }
+.ico-lg { width: 24px; height: 24px; }
+
+/* ---------------------------------------------------------------------------
+   Utilidades propias
+--------------------------------------------------------------------------- */
+.oculto { display: none !important; }
+
+.texto-2 { color: var(--texto-2); }
+.texto-verde { color: var(--verde); }
+.texto-azul { color: var(--azul); }
+
+.fila-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+}
+
+/* Animación de entrada, suave y corta. */
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.animar-entrada { animation: aparecer var(--trans-lenta) both; }
+
+/* Escalonado para rejillas de tarjetas: sensación de orden, no de espectáculo */
+.animar-escalonado > * { animation: aparecer var(--trans-lenta) both; }
+.animar-escalonado > *:nth-child(1) { animation-delay: 0ms; }
+.animar-escalonado > *:nth-child(2) { animation-delay: 30ms; }
+.animar-escalonado > *:nth-child(3) { animation-delay: 60ms; }
+.animar-escalonado > *:nth-child(4) { animation-delay: 90ms; }
+.animar-escalonado > *:nth-child(5) { animation-delay: 120ms; }
+.animar-escalonado > *:nth-child(6) { animation-delay: 150ms; }
+.animar-escalonado > *:nth-child(7) { animation-delay: 180ms; }
+.animar-escalonado > *:nth-child(n+8) { animation-delay: 210ms; }

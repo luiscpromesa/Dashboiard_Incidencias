@@ -1,421 +1,1087 @@
 <!doctype html>
 <!-- ==========================================================================
      index.html — Frontend del Sistema de Incidencias Logísticas
+     Grupo PROMESA · Promotora de un Mejor Entorno Social y Ambiental
+
      Se publica en GitHub Pages. No contiene datos ni credenciales:
      toda la información se pide al backend en Render, que a su vez la
      guarda en Firebase.
+
+     Estructura de la página:
+       1. Sprite de iconos (SVG en línea, sin librerías externas)
+       2. Pantalla de acceso (#acceso)
+       3. Armazón de la aplicación (#app-shell)
+          3.1 Menú lateral plegable
+          3.2 Encabezado superior
+          3.3 Panel de filtros
+          3.4 Secciones de contenido (#seccion-*)
+       4. Avisos e indicador de carga
      ========================================================================== -->
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Incidencias Logísticas</title>
+  <meta name="theme-color" content="#068C45">
+  <meta name="description" content="Dashboard de incidencias logísticas de Grupo PROMESA.">
+  <title>Incidencias Logísticas · Grupo PROMESA</title>
+
+  <link rel="icon" type="image/png" href="static/img/isotipo_promesa.png">
+  <link rel="apple-touch-icon" href="static/img/isotipo_promesa.png">
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Estilos propios, en orden: tokens → armazón → componentes → pantallas -->
+  <link href="css/base.css" rel="stylesheet">
+  <link href="css/layout.css" rel="stylesheet">
+  <link href="css/componentes.css" rel="stylesheet">
   <link href="css/estilos.css" rel="stylesheet">
+
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 </head>
-<body class="bg-light">
+<body>
 
-<!-- ======================= Barra de navegación ======================= -->
-<nav class="navbar navbar-expand-lg navbar-dark" style="background:#1F4E79">
-  <div class="container-fluid">
-    <span class="navbar-brand fw-bold">🚛 Incidencias Logísticas</span>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="nav">
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a class="nav-link activa" href="#" data-seccion="dashboard">📊 Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-seccion="servicio">📝 Registrar servicio</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-seccion="incidencia">⚠️ Registrar incidencia</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-seccion="pendientes">🔓 Pendientes</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-seccion="clientes">👥 Clientes</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-seccion="tipos">🏷️ Tipos</a></li>
-        <li class="nav-item"><a class="nav-link" href="#" data-seccion="reportes">📄 Reportes</a></li>
-      </ul>
-      <button class="btn btn-outline-light btn-sm" id="btn-salir">Cerrar sesión</button>
-    </div>
-  </div>
-</nav>
+<a class="salto-contenido" href="#contenido">Saltar al contenido principal</a>
 
-<main class="container-fluid py-4 px-4">
-  <!-- Avisos (éxito / error) -->
-  <div id="avisos"></div>
+<!-- ===================================================================
+     1. Sprite de iconos
+     Iconos de trazo, 24×24, coherentes en toda la aplicación.
+     Se usan con <svg class="ico"><use href="#i-nombre"></use></svg>
+     =================================================================== -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
+  <symbol id="i-inicio" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-dashboard" viewBox="0 0 24 24"><path d="M3 21h18M6 21V10M11 21V4M16 21v-7"/></symbol>
+  <symbol id="i-servicio" viewBox="0 0 24 24"><path d="M9 3h6a1 1 0 0 1 1 1v2H8V4a1 1 0 0 1 1-1z"/><path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M12 11v6M9 14h6"/></symbol>
+  <symbol id="i-incidencia" viewBox="0 0 24 24"><path d="M10.3 3.6 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.6a2 2 0 0 0-3.4 0z"/><path d="M12 9v4.5M12 17.2h.01"/></symbol>
+  <symbol id="i-pendientes" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></symbol>
+  <symbol id="i-historial" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+  <symbol id="i-clientes" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-reportes" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></symbol>
+  <symbol id="i-config" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1.5 14h5M9.5 8h5M17.5 16h5"/></symbol>
+  <symbol id="i-tipos" viewBox="0 0 24 24"><path d="M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.6" cy="7.6" r="1.2"/></symbol>
+  <symbol id="i-salir" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
+  <symbol id="i-filtro" viewBox="0 0 24 24"><path d="M22 3H2l8 9.5V19l4 2v-8.5z"/></symbol>
+  <symbol id="i-buscar" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
+  <symbol id="i-descargar" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-subir" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/></symbol>
+  <symbol id="i-mas" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-calendario" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18"/></symbol>
+  <symbol id="i-refrescar" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3.5v6h-6"/></symbol>
+  <symbol id="i-limpiar" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 2.6-6.4"/><path d="M3 3.5v6h6"/></symbol>
+  <symbol id="i-reloj" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3 1.8"/></symbol>
+  <symbol id="i-camion" viewBox="0 0 24 24"><path d="M2 5.5h11v11H2z"/><path d="M13 9h4l4 4v3.5h-8"/><circle cx="6.5" cy="18.5" r="2"/><circle cx="17.5" cy="18.5" r="2"/></symbol>
+  <symbol id="i-repetir" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></symbol>
+  <symbol id="i-megafono" viewBox="0 0 24 24"><path d="M3 10.5v3a1 1 0 0 0 1 1h2l6 4.5V5l-6 4.5H4a1 1 0 0 0-1 1z"/><path d="M16.5 9.2a4 4 0 0 1 0 5.6M19.5 6.2a8 8 0 0 1 0 11.6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.2 12.3 2.6 2.6 5-5.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11.2v5M12 7.8h.01"/></symbol>
+  <symbol id="i-alerta" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.4v5.2M12 16.4h.01"/></symbol>
+  <symbol id="i-arriba" viewBox="0 0 24 24"><path d="m23 6.5-9.5 9.5-5-5L1 18.5"/><path d="M17 6.5h6v6"/></symbol>
+  <symbol id="i-abajo" viewBox="0 0 24 24"><path d="m23 17.5-9.5-9.5-5 5L1 5.5"/><path d="M17 17.5h6v-6"/></symbol>
+  <symbol id="i-igual" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-porcentaje" viewBox="0 0 24 24"><path d="M19 5 5 19"/><circle cx="6.8" cy="6.8" r="2.6"/><circle cx="17.2" cy="17.2" r="2.6"/></symbol>
+  <symbol id="i-candado" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9.5 6 6 6-6"/></symbol>
+  <symbol id="i-guardar" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></symbol>
+  <symbol id="i-basura" viewBox="0 0 24 24"><path d="M3.5 6h17M8 6V4.2A1.2 1.2 0 0 1 9.2 3h5.6A1.2 1.2 0 0 1 16 4.2V6"/><path d="m18.6 6-.9 13.1A2 2 0 0 1 15.7 21H8.3a2 2 0 0 1-2-1.9L5.4 6"/></symbol>
+  <symbol id="i-ojo" viewBox="0 0 24 24"><path d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-archivo" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></symbol>
+  <symbol id="i-hoja" viewBox="0 0 24 24"><path d="M11 20.5A7.5 7.5 0 0 1 3.5 13C3.5 7 10.5 2.5 20.5 2.5c0 9.5-4.5 16.5-10.5 16.5"/><path d="M4 21c3.2-6.5 7-10 13.5-13.5"/></symbol>
+  <symbol id="i-usuario" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="3.5" width="18" height="17" rx="2"/><path d="M3 9.5h18M9.5 20.5v-11"/></symbol>
+  <symbol id="i-lista" viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h16M4 17.5h10"/></symbol>
+</svg>
 
-  <!-- ======================= Pantalla de acceso ======================= -->
-  <section id="acceso" class="oculto">
-    <div class="card shadow-sm mx-auto" style="max-width: 460px">
-      <div class="card-body">
-        <h5 class="mb-3">Acceso al sistema</h5>
-        <p class="text-muted small">
-          Ingresa la contraseña de acceso (la que se configuró como
-          <code>API_TOKEN</code> en Render). Se guarda solo en este navegador.
-        </p>
-        <div class="input-group">
-          <input type="password" class="form-control" id="campo-token"
-                 placeholder="Contraseña de acceso">
-          <button class="btn btn-primary" id="btn-entrar">Entrar</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ======================= Dashboard ======================= -->
-  <section id="seccion-dashboard">
-    <h3 class="mb-3">📊 Dashboard de incidencias logísticas</h3>
-
-    <form class="card card-body mb-4" id="form-filtros">
-      <div class="row g-2" id="contenedor-filtros">
-        <div class="col-6 col-md-2">
-          <label class="form-label small mb-0">Desde</label>
-          <input type="date" class="form-control form-control-sm" name="desde">
-        </div>
-        <div class="col-6 col-md-2">
-          <label class="form-label small mb-0">Hasta</label>
-          <input type="date" class="form-control form-control-sm" name="hasta">
-        </div>
-        <!-- El resto de filtros se generan por JavaScript -->
-      </div>
-      <div class="mt-2">
-        <button class="btn btn-primary btn-sm" type="submit">Aplicar filtros</button>
-        <button class="btn btn-outline-secondary btn-sm" type="button" id="btn-limpiar">Limpiar</button>
-      </div>
-    </form>
-
-    <div class="row g-2 mb-4" id="tarjetas-kpi"></div>
-    <div class="row g-3 mb-3" id="graficas"></div>
-
-    <div class="card shadow-sm">
-      <div class="card-header fw-bold">Detalle de incidencias</div>
-      <div class="table-responsive">
-        <table class="table table-sm table-striped align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Fecha</th><th>Cliente</th><th>Estado</th><th>Tipo</th>
-              <th>Gravedad</th><th>Vueltas</th><th>Retraso</th>
-              <th>Reportó cliente</th><th>Resuelta</th>
-              <th>A tiempo</th><th>F. resolución</th><th>Responsable</th>
-              <th>Evidencias</th><th>Comentarios</th>
-            </tr>
-          </thead>
-          <tbody id="tabla-detalle"></tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <!-- ======================= Registrar servicio ======================= -->
-  <section id="seccion-servicio" class="oculto">
-    <h3 class="mb-1">📝 Registrar un servicio</h3>
-    <p class="text-muted small">
-      Registra también los servicios <strong>sin</strong> incidencias: son la base
-      para calcular el porcentaje de recolecciones sin inconvenientes.
+<!-- ===================================================================
+     2. Pantalla de acceso
+     app.js la muestra/oculta con mostrarAcceso().
+     =================================================================== -->
+<div id="acceso" class="pantalla-acceso oculto">
+  <div class="caja-acceso">
+    <img src="static/img/logo_promesa.png" width="1000" height="199"
+         alt="Grupo PROMESA — Promotora de un Mejor Entorno Social y Ambiental">
+    <h1>Sistema de Incidencias Logísticas</h1>
+    <p>
+      Ingresa la contraseña de acceso (la que se configuró como
+      <code>API_TOKEN</code> en Render). Se guarda solo en este navegador.
     </p>
-    <form class="card card-body shadow-sm" id="form-servicio" style="max-width:900px">
-      <div class="row g-3">
-        <div class="col-md-4">
-          <label class="form-label">Fecha *</label>
-          <input type="date" class="form-control" name="fecha" required>
-        </div>
-        <div class="col-md-8">
-          <label class="form-label">Cliente *</label>
-          <select class="form-select" name="cliente_id" id="sel-cliente-servicio" required></select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Tipo de servicio</label>
-          <select class="form-select" name="tipo_servicio" id="sel-tipo-servicio"></select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Hora programada</label>
-          <input type="time" class="form-control" name="hora_programada">
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Hora real de llegada</label>
-          <input type="time" class="form-control" name="hora_real">
-          <div class="form-text">Si es posterior a la programada, cuenta como retraso.</div>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label d-block">¿Se realizó el servicio?</label>
-          <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="realizado" value="si" checked id="sr-si">
-            <label class="form-check-label" for="sr-si">Sí</label>
-          </div>
-          <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="realizado" value="no" id="sr-no">
-            <label class="form-check-label" for="sr-no">No</label>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Resultado</label>
-          <select class="form-select" name="resultado" id="sel-resultado"></select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Responsable</label>
-          <input type="text" class="form-control" name="responsable">
-        </div>
-        <div class="col-12">
-          <label class="form-label">Observaciones</label>
-          <textarea class="form-control" name="observaciones" rows="2"></textarea>
-        </div>
-      </div>
-      <div class="mt-3">
-        <button class="btn btn-primary" type="submit">💾 Guardar servicio</button>
-      </div>
-    </form>
-  </section>
+    <div class="input-group">
+      <label class="solo-lectores" for="campo-token">Contraseña de acceso</label>
+      <input type="password" class="form-control" id="campo-token"
+             autocomplete="current-password" placeholder="Contraseña de acceso">
+      <button class="btn btn-primary" id="btn-entrar" type="button">
+        <svg class="ico" aria-hidden="true"><use href="#i-candado"></use></svg>
+        Entrar
+      </button>
+    </div>
+    <p class="form-text mt-3 mb-0">
+      La primera conexión del día puede tardar hasta un minuto mientras el
+      servidor despierta.
+    </p>
+  </div>
+</div>
 
-  <!-- ======================= Registrar incidencia ======================= -->
-  <section id="seccion-incidencia" class="oculto">
-    <h3 class="mb-3">⚠️ Registrar una incidencia</h3>
-    <form class="card card-body shadow-sm" id="form-incidencia" style="max-width:900px">
-      <div class="row g-3">
-        <div class="col-12">
-          <label class="form-label">Servicio asociado *</label>
-          <select class="form-select" name="servicio_id" id="sel-servicio" required></select>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Tipo de incidencia *</label>
-          <select class="form-select" name="tipo_incidencia_id" id="sel-tipo-incidencia" required></select>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Gravedad *</label>
-          <select class="form-select" name="gravedad" id="sel-gravedad"></select>
-          <div class="form-text">Se sugiere según el tipo; puedes ajustarla.</div>
-        </div>
-        <div class="col-12">
-          <label class="form-label">Descripción detallada</label>
-          <textarea class="form-control" name="descripcion" rows="2"
-                    placeholder="¿Qué pasó exactamente?"></textarea>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Vueltas adicionales</label>
-          <input type="number" min="0" step="1" class="form-control" name="vueltas_adicionales" value="0">
-          <div class="form-text">Recolecciones extra que hubo que hacer.</div>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Tiempo de retraso (min)</label>
-          <input type="number" min="0" step="1" class="form-control" name="minutos_retraso" value="0">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label d-block">¿Hubo reporte del cliente?</label>
-          <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="reporto_cliente" value="no" checked id="rc-no">
-            <label class="form-check-label" for="rc-no">No</label>
+<!-- ===================================================================
+     3. Armazón de la aplicación
+     =================================================================== -->
+<div class="app" id="app-shell">
+
+  <!-- Fondo oscurecido del menú en móviles -->
+  <div class="fondo-lateral" id="fondo-lateral" hidden></div>
+
+  <!-- ============ 3.1 Menú lateral ============ -->
+  <aside class="barra-lateral" id="barra-lateral" aria-label="Navegación principal">
+    <div class="lateral-marca">
+      <img class="marca-completa" src="static/img/logo_promesa.png"
+           width="1000" height="199"
+           alt="Grupo PROMESA — Promotora de un Mejor Entorno Social y Ambiental">
+      <img class="marca-iso" src="static/img/isotipo_promesa.png"
+           width="256" height="256" alt="Grupo PROMESA">
+    </div>
+
+    <nav class="lateral-nav" id="nav">
+      <p class="lateral-lema">Incidencias logísticas</p>
+      <ul>
+        <li><a class="nav-link" href="#" data-seccion="inicio" data-titulo="Inicio">
+          <svg class="ico" aria-hidden="true"><use href="#i-inicio"></use></svg>
+          <span class="nav-texto">Inicio</span></a></li>
+
+        <li><a class="nav-link activa" href="#" data-seccion="dashboard" data-titulo="Dashboard">
+          <svg class="ico" aria-hidden="true"><use href="#i-dashboard"></use></svg>
+          <span class="nav-texto">Dashboard</span></a></li>
+
+        <li><a class="nav-link" href="#" data-seccion="servicio" data-titulo="Registrar servicio">
+          <svg class="ico" aria-hidden="true"><use href="#i-servicio"></use></svg>
+          <span class="nav-texto">Registrar servicio</span></a></li>
+
+        <li><a class="nav-link" href="#" data-seccion="incidencia" data-titulo="Registrar incidencia">
+          <svg class="ico" aria-hidden="true"><use href="#i-incidencia"></use></svg>
+          <span class="nav-texto">Registrar incidencia</span></a></li>
+
+        <li><a class="nav-link" href="#" data-seccion="pendientes" data-titulo="Pendientes">
+          <svg class="ico" aria-hidden="true"><use href="#i-pendientes"></use></svg>
+          <span class="nav-texto">Pendientes</span></a></li>
+
+        <li><a class="nav-link" href="#" data-seccion="historial" data-titulo="Historial de incidencias">
+          <svg class="ico" aria-hidden="true"><use href="#i-historial"></use></svg>
+          <span class="nav-texto">Historial de incidencias</span></a></li>
+
+        <li><a class="nav-link" href="#" data-seccion="clientes" data-titulo="Clientes">
+          <svg class="ico" aria-hidden="true"><use href="#i-clientes"></use></svg>
+          <span class="nav-texto">Clientes</span></a></li>
+
+        <li><a class="nav-link" href="#" data-seccion="reportes" data-titulo="Reportes">
+          <svg class="ico" aria-hidden="true"><use href="#i-reportes"></use></svg>
+          <span class="nav-texto">Reportes</span></a></li>
+      </ul>
+
+      <!-- Separación clara entre navegación y acciones secundarias -->
+      <div class="lateral-separador"></div>
+      <p class="lateral-grupo">Administración</p>
+      <ul>
+        <li><a class="nav-link" href="#" data-seccion="tipos" data-titulo="Configuración">
+          <svg class="ico" aria-hidden="true"><use href="#i-config"></use></svg>
+          <span class="nav-texto">Configuración</span></a></li>
+      </ul>
+    </nav>
+
+    <div class="lateral-pie">
+      <p class="lateral-pie-texto">
+        Grupo PROMESA<br>
+        Promotora de un Mejor Entorno Social y Ambiental
+      </p>
+      <button class="btn btn-contorno btn-sm w-100" id="btn-salir-lateral" type="button">
+        <svg class="ico" aria-hidden="true"><use href="#i-salir"></use></svg>
+        <span class="nav-texto">Cerrar sesión</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ Contenido ============ -->
+  <div class="contenido-app">
+
+    <!-- ---------- 3.2 Encabezado superior ---------- -->
+    <header class="barra-superior">
+      <button class="btn-lateral" id="btn-menu" type="button"
+              aria-label="Contraer o expandir el menú" aria-expanded="true">
+        <svg class="ico" aria-hidden="true"><use href="#i-menu"></use></svg>
+      </button>
+
+      <div class="superior-titulo">
+        <h1 id="titulo-seccion">Dashboard</h1>
+        <p id="desc-seccion">Panorama general de las incidencias logísticas.</p>
+      </div>
+
+      <div class="superior-acciones">
+        <span class="pildora-info" id="pildora-periodo"
+              data-tip="Periodo considerado según los filtros aplicados.">
+          <svg class="ico" aria-hidden="true"><use href="#i-calendario"></use></svg>
+          <span id="texto-periodo">Todo el historial</span>
+        </span>
+
+        <span class="pildora-info" id="pildora-actualizado"
+              data-tip="Momento en que se consultaron los datos por última vez.">
+          <svg class="ico" aria-hidden="true"><use href="#i-refrescar"></use></svg>
+          <span id="texto-actualizado">Sin consultar</span>
+        </span>
+
+        <button class="btn btn-primary btn-sm" type="button" data-ir="incidencia"
+                aria-label="Registrar una nueva incidencia">
+          <svg class="ico" aria-hidden="true"><use href="#i-mas"></use></svg>
+          <span class="solo-ancho">Nueva incidencia</span>
+        </button>
+
+        <button class="btn btn-secundario btn-sm" type="button" data-ir="reportes"
+                aria-label="Ir a exportación de reportes">
+          <svg class="ico" aria-hidden="true"><use href="#i-descargar"></use></svg>
+          <span class="solo-ancho">Exportar</span>
+        </button>
+
+        <div class="menu-usuario">
+          <button class="usuario-boton" id="btn-usuario" type="button"
+                  aria-haspopup="true" aria-expanded="false" aria-label="Menú de sesión">
+            <span class="usuario-avatar" aria-hidden="true">GP</span>
+            <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chevron"></use></svg>
+          </button>
+          <div class="usuario-panel oculto" id="panel-usuario" role="menu">
+            <p class="fw-bold mb-1" style="font-size:var(--txt-sm)">Sesión activa</p>
+            <p class="dato" id="dato-servidor">—</p>
+            <button class="btn btn-contorno btn-sm w-100" id="btn-salir" type="button" role="menuitem">
+              <svg class="ico" aria-hidden="true"><use href="#i-salir"></use></svg>
+              Cerrar sesión
+            </button>
           </div>
-          <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="reporto_cliente" value="si" id="rc-si">
-            <label class="form-check-label" for="rc-si">Sí</label>
-          </div>
-          <div class="form-text">Si el cliente reportó, el seguimiento lo lleva RH y jefatura.</div>
         </div>
-        <div class="col-md-6">
-          <label class="form-label d-block">¿Ya está resuelta?</label>
-          <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="resuelta" value="no" checked id="re-no">
-            <label class="form-check-label" for="re-no">No</label>
-          </div>
-          <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="resuelta" value="si" id="re-si">
-            <label class="form-check-label" for="re-si">Sí</label>
-          </div>
-        </div>
-        <div class="row g-3 col-12 m-0 p-0 oculto" id="bloque-resolucion">
-          <div class="col-md-6">
-            <label class="form-label">Fecha de resolución</label>
-            <input type="date" class="form-control" name="fecha_resolucion">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label d-block">¿Se resolvió a tiempo?</label>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="radio" name="a_tiempo" value="si" checked id="at-si">
-              <label class="form-check-label" for="at-si">Sí</label>
-            </div>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="radio" name="a_tiempo" value="no" id="at-no">
-              <label class="form-check-label" for="at-no">No</label>
-            </div>
-          </div>
-        </div>
-        <!-- Solo visible cuando el cliente del servicio es prioritario -->
-        <div class="col-12 oculto" id="bloque-prioritario">
-          <div class="card border-danger">
-            <div class="card-body py-2">
-              <div class="fw-bold text-danger mb-2">
-                ⚠️ Cliente prioritario (Walmart / Bodega / Sam's)
+      </div>
+    </header>
+
+    <!-- Avisos tipo toast (app.js escribe aquí con avisar()) -->
+    <div id="avisos" role="status" aria-live="polite"></div>
+
+    <main class="area-contenido" id="contenido">
+
+      <!-- ---------- 3.3 Panel de filtros (dashboard e historial) ---------- -->
+      <div class="panel-filtros abierto oculto" id="panel-filtros">
+        <button class="filtros-cabecera" type="button" id="btn-plegar-filtros"
+                aria-expanded="true" aria-controls="cuerpo-filtros">
+          <svg class="ico" aria-hidden="true"><use href="#i-filtro"></use></svg>
+          <span>Filtros</span>
+          <span class="contador-filtros oculto" id="contador-filtros">0</span>
+          <svg class="ico ico-chevron" aria-hidden="true"><use href="#i-chevron"></use></svg>
+        </button>
+
+        <form id="form-filtros">
+          <div class="filtros-cuerpo" id="cuerpo-filtros">
+            <div>
+              <div class="filtros-rejilla" id="contenedor-filtros">
+                <div>
+                  <label class="form-label" for="f-desde">Desde</label>
+                  <input type="date" class="form-control form-control-sm" name="desde" id="f-desde">
+                </div>
+                <div>
+                  <label class="form-label" for="f-hasta">Hasta</label>
+                  <input type="date" class="form-control form-control-sm" name="hasta" id="f-hasta">
+                </div>
+                <!-- El resto de filtros se generan por JavaScript -->
               </div>
-              <div class="row g-3">
-                <div class="col-md-4 d-flex align-items-center">
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox"
-                           name="segunda_vuelta_no_cobrable" id="chk-segunda-vuelta">
-                    <label class="form-check-label" for="chk-segunda-vuelta">
-                      Hubo 2ª vuelta <strong>no cobrable</strong>
-                    </label>
+            </div>
+          </div>
+
+          <div class="filtros-pie">
+            <button class="btn btn-primary btn-sm" type="submit">
+              <svg class="ico" aria-hidden="true"><use href="#i-check"></use></svg>
+              Aplicar filtros
+            </button>
+            <button class="btn btn-contorno btn-sm" type="button" id="btn-limpiar">
+              <svg class="ico" aria-hidden="true"><use href="#i-limpiar"></use></svg>
+              Limpiar filtros
+            </button>
+            <div class="filtros-activos" id="filtros-activos"></div>
+            <span class="pildora-info ms-auto" id="pildora-resultados">
+              <svg class="ico" aria-hidden="true"><use href="#i-lista"></use></svg>
+              <span id="texto-resultados">Sin consultar</span>
+            </span>
+          </div>
+        </form>
+      </div>
+
+      <!-- =============== Inicio =============== -->
+      <section id="seccion-inicio" class="oculto" aria-labelledby="titulo-inicio">
+        <div class="bienvenida">
+          <img src="static/img/logo_promesa.png" width="1000" height="199"
+               alt="Grupo PROMESA — Promotora de un Mejor Entorno Social y Ambiental">
+          <div class="texto">
+            <h2 id="titulo-inicio">Sistema de Incidencias Logísticas</h2>
+            <p>
+              Registra los servicios de recolección, documenta las incidencias con
+              su evidencia y da seguimiento a los indicadores de operación.
+              Un servicio bien registrado es la base de un indicador confiable.
+            </p>
+          </div>
+        </div>
+
+        <div class="inicio-accesos animar-escalonado">
+          <a class="tarjeta-accion" href="#" data-ir="dashboard">
+            <span class="titulo">
+              <svg class="ico" aria-hidden="true"><use href="#i-dashboard"></use></svg>
+              Ver el dashboard
+            </span>
+            <span class="detalle">Indicadores, gráficas y comparativos del periodo.</span>
+          </a>
+          <a class="tarjeta-accion" href="#" data-ir="servicio">
+            <span class="titulo">
+              <svg class="ico" aria-hidden="true"><use href="#i-servicio"></use></svg>
+              Registrar un servicio
+            </span>
+            <span class="detalle">Incluye los servicios sin incidencias: son la base del cálculo.</span>
+          </a>
+          <a class="tarjeta-accion" href="#" data-ir="incidencia">
+            <span class="titulo">
+              <svg class="ico" aria-hidden="true"><use href="#i-incidencia"></use></svg>
+              Registrar una incidencia
+            </span>
+            <span class="detalle">Documenta qué pasó, su impacto y las evidencias.</span>
+          </a>
+          <a class="tarjeta-accion" href="#" data-ir="pendientes">
+            <span class="titulo">
+              <svg class="ico" aria-hidden="true"><use href="#i-pendientes"></use></svg>
+              Atender pendientes
+            </span>
+            <span class="detalle">Incidencias abiertas que siguen esperando cierre.</span>
+          </a>
+          <a class="tarjeta-accion" href="#" data-ir="historial">
+            <span class="titulo">
+              <svg class="ico" aria-hidden="true"><use href="#i-historial"></use></svg>
+              Consultar el historial
+            </span>
+            <span class="detalle">Busca, ordena y revisa el detalle de cada incidencia.</span>
+          </a>
+          <a class="tarjeta-accion" href="#" data-ir="reportes">
+            <span class="titulo">
+              <svg class="ico" aria-hidden="true"><use href="#i-reportes"></use></svg>
+              Generar un reporte
+            </span>
+            <span class="detalle">Descarga el concentrado en Excel, con o sin evidencias.</span>
+          </a>
+        </div>
+
+        <div class="tarjeta mb-3">
+          <div class="tarjeta-cabecera">
+            <svg class="ico" aria-hidden="true"><use href="#i-alerta"></use></svg>
+            Niveles de gravedad
+            <span class="ayuda-icono ms-1" tabindex="0" role="img"
+                  aria-label="Ayuda sobre los niveles de gravedad"
+                  data-tip="El color acompaña al texto: nunca se comunica la gravedad solo con color.">
+              <svg class="ico ico-sm" aria-hidden="true"><use href="#i-info"></use></svg>
+            </span>
+          </div>
+          <div class="tarjeta-cuerpo">
+            <div class="leyenda-gravedad" id="leyenda-gravedad">
+              <!-- La llena ui.js con los colores que manda el backend -->
+            </div>
+          </div>
+        </div>
+
+        <div class="inicio-nota">
+          <svg class="ico" aria-hidden="true"><use href="#i-info"></use></svg>
+          <div>
+            <strong>Sobre los datos:</strong> la información se consulta en vivo al
+            servidor. Si es la primera visita del día, la primera consulta puede
+            tardar hasta un minuto mientras el servicio despierta.
+          </div>
+        </div>
+      </section>
+
+      <!-- =============== Dashboard =============== -->
+      <section id="seccion-dashboard" aria-labelledby="titulo-dashboard">
+        <div class="seccion-cabecera">
+          <h2 id="titulo-dashboard">Indicadores de operación</h2>
+          <p>
+            Cada tarjeta resume un aspecto del servicio. Pasa el cursor sobre una
+            tarjeta para ver cómo se calcula.
+          </p>
+        </div>
+
+        <!-- Tarjetas de indicadores (las genera pintarKPIs) -->
+        <div class="rejilla-kpi" id="tarjetas-kpi"></div>
+
+        <div class="seccion-cabecera">
+          <h2>Análisis gráfico</h2>
+          <p>
+            Distribución de las incidencias por tipo, gravedad, cliente y periodo.
+            Pasa el cursor sobre las series para ver los valores exactos.
+          </p>
+        </div>
+
+        <!-- Gráficas (las genera pintarGraficas) -->
+        <div class="rejilla-graficas" id="graficas"></div>
+      </section>
+
+      <!-- =============== Historial de incidencias =============== -->
+      <section id="seccion-historial" class="oculto" aria-labelledby="titulo-historial">
+        <div class="seccion-cabecera">
+          <h2 id="titulo-historial">Historial de incidencias</h2>
+          <p>
+            Detalle de las incidencias que cumplen los filtros aplicados.
+            Usa la búsqueda rápida para acotar dentro del resultado.
+          </p>
+        </div>
+
+        <div class="tarjeta">
+          <div class="tabla-herramientas">
+            <div class="buscador">
+              <svg class="ico" aria-hidden="true"><use href="#i-buscar"></use></svg>
+              <label class="solo-lectores" for="buscar-historial">Búsqueda rápida en el historial</label>
+              <input type="search" class="form-control form-control-sm" id="buscar-historial"
+                     placeholder="Buscar cliente, tipo, responsable…">
+            </div>
+            <span class="etiqueta etiqueta-neutra" id="conteo-historial">0 incidencias</span>
+            <div class="ms-auto fila-acciones">
+              <label class="form-label mb-0" for="filas-historial" style="white-space:nowrap">Filas</label>
+              <select class="form-select form-select-sm" id="filas-historial" style="width:auto">
+                <option>10</option>
+                <option selected>25</option>
+                <option>50</option>
+                <option>100</option>
+              </select>
+              <button class="btn btn-contorno btn-sm" type="button" data-ir="reportes">
+                <svg class="ico" aria-hidden="true"><use href="#i-descargar"></use></svg>
+                Exportar
+              </button>
+            </div>
+          </div>
+
+          <div class="tabla-envoltura">
+            <table class="tabla-datos a-tarjetas" id="tabla-historial">
+              <caption class="solo-lectores">
+                Detalle de incidencias con los filtros aplicados. Las columnas con
+                flecha se pueden ordenar.
+              </caption>
+              <thead>
+                <tr>
+                  <th data-orden="fecha" scope="col">Fecha</th>
+                  <th data-orden="texto" scope="col">Cliente</th>
+                  <th data-orden="texto" scope="col">Estado</th>
+                  <th data-orden="texto" scope="col">Tipo</th>
+                  <th data-orden="texto" scope="col">Gravedad</th>
+                  <th data-orden="numero" scope="col">Vueltas</th>
+                  <th data-orden="numero" scope="col">Retraso</th>
+                  <th data-orden="texto" scope="col">Reportó cliente</th>
+                  <th data-orden="texto" scope="col">Resuelta</th>
+                  <th data-orden="texto" scope="col">A tiempo</th>
+                  <th data-orden="fecha" scope="col">F. resolución</th>
+                  <th data-orden="texto" scope="col">Responsable</th>
+                  <th scope="col">Evidencias</th>
+                  <th scope="col">Comentarios</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-detalle"></tbody>
+            </table>
+          </div>
+
+          <div class="paginacion" id="paginacion-historial"></div>
+        </div>
+      </section>
+
+      <!-- =============== Registrar servicio =============== -->
+      <section id="seccion-servicio" class="oculto" aria-labelledby="titulo-servicio">
+        <div class="seccion-cabecera">
+          <h2 id="titulo-servicio">Registrar un servicio</h2>
+          <p>
+            Registra también los servicios <strong>sin</strong> incidencias: son la base
+            para calcular el porcentaje de recolecciones sin inconvenientes.
+          </p>
+        </div>
+
+        <form id="form-servicio" style="max-width:960px" data-guardar-cambios novalidate>
+          <fieldset class="bloque-form">
+            <legend>
+              <span class="numero">1</span> Información del cliente
+              <span class="ayuda">Quién y cuándo</span>
+            </legend>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label" for="s-fecha">Fecha <span class="obligatorio" aria-hidden="true">*</span></label>
+                <input type="date" class="form-control" name="fecha" id="s-fecha" required>
+              </div>
+              <div class="col-md-8 campo-autocompletar">
+                <label class="form-label" for="buscar-cliente">Cliente <span class="obligatorio" aria-hidden="true">*</span></label>
+                <input type="search" class="form-control mb-2" id="buscar-cliente"
+                       placeholder="Escribe para buscar un cliente…"
+                       aria-describedby="pista-cliente" autocomplete="off">
+                <select class="form-select" name="cliente_id" id="sel-cliente-servicio"
+                        aria-label="Cliente" required></select>
+                <p class="pista" id="pista-cliente">
+                  La búsqueda filtra la lista; el cliente se elige en el selector.
+                </p>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="bloque-form">
+            <legend>
+              <span class="numero">2</span> Información del servicio
+              <span class="ayuda">Qué se hizo y a qué hora</span>
+            </legend>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label" for="sel-tipo-servicio">Tipo de servicio</label>
+                <select class="form-select" name="tipo_servicio" id="sel-tipo-servicio"></select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="s-hora-prog">Hora programada</label>
+                <input type="time" class="form-control" name="hora_programada" id="s-hora-prog">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="s-hora-real">Hora real de llegada</label>
+                <input type="time" class="form-control" name="hora_real" id="s-hora-real">
+                <div class="form-text">Si es posterior a la programada, cuenta como retraso.</div>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="bloque-form">
+            <legend>
+              <span class="numero">3</span> Resultado operativo
+              <span class="ayuda">Cómo terminó el servicio</span>
+            </legend>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <span class="form-label d-block" id="lbl-realizado">¿Se realizó el servicio?</span>
+                <div class="opciones-linea" role="radiogroup" aria-labelledby="lbl-realizado">
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="radio" name="realizado" value="si" checked id="sr-si">
+                    <label class="form-check-label" for="sr-si">Sí</label>
+                  </div>
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="radio" name="realizado" value="no" id="sr-no">
+                    <label class="form-check-label" for="sr-no">No</label>
                   </div>
                 </div>
-                <div class="col-md-8">
-                  <label class="form-label mb-0">Material que quedó en el centro</label>
-                  <input type="text" class="form-control" name="material_pendiente"
-                         placeholder="¿Qué material quedó pendiente de recolectar?">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="sel-resultado">Resultado</label>
+                <select class="form-select" name="resultado" id="sel-resultado"></select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="s-responsable">Responsable</label>
+                <input type="text" class="form-control" name="responsable" id="s-responsable">
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="s-observaciones">Observaciones</label>
+                <textarea class="form-control" name="observaciones" id="s-observaciones" rows="2"></textarea>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="form-acciones">
+            <button class="btn btn-primary" type="submit">
+              <svg class="ico" aria-hidden="true"><use href="#i-guardar"></use></svg>
+              Guardar servicio
+            </button>
+            <button class="btn btn-contorno" type="button" data-limpiar-form>
+              <svg class="ico" aria-hidden="true"><use href="#i-limpiar"></use></svg>
+              Limpiar
+            </button>
+            <button class="btn btn-contorno" type="button" data-ir="dashboard">
+              <svg class="ico" aria-hidden="true"><use href="#i-x"></use></svg>
+              Cancelar
+            </button>
+            <span class="aviso-cambios oculto" data-aviso-cambios>
+              <svg class="ico ico-sm" aria-hidden="true"><use href="#i-alerta"></use></svg>
+              Hay cambios sin guardar
+            </span>
+          </div>
+        </form>
+      </section>
+
+      <!-- =============== Registrar incidencia =============== -->
+      <section id="seccion-incidencia" class="oculto" aria-labelledby="titulo-incidencia">
+        <div class="seccion-cabecera">
+          <h2 id="titulo-incidencia">Registrar una incidencia</h2>
+          <p>
+            Describe qué ocurrió, su impacto operativo y cómo se resolvió.
+            Los campos marcados con <span class="obligatorio">*</span> son obligatorios.
+          </p>
+        </div>
+
+        <form id="form-incidencia" style="max-width:960px" data-guardar-cambios novalidate>
+
+          <!-- 1. Información del cliente / servicio -->
+          <fieldset class="bloque-form">
+            <legend>
+              <span class="numero">1</span> Información del cliente
+              <span class="ayuda">Servicio al que pertenece la incidencia</span>
+            </legend>
+            <div class="row g-3">
+              <div class="col-12 campo-autocompletar">
+                <label class="form-label" for="buscar-servicio">
+                  Servicio asociado <span class="obligatorio" aria-hidden="true">*</span>
+                </label>
+                <input type="search" class="form-control mb-2" id="buscar-servicio"
+                       placeholder="Escribe para buscar por fecha o cliente…" autocomplete="off">
+                <select class="form-select" name="servicio_id" id="sel-servicio"
+                        aria-label="Servicio asociado" required></select>
+                <p class="pista">
+                  Si el servicio todavía no existe, regístralo primero en
+                  «Registrar servicio».
+                </p>
+              </div>
+
+              <!-- Solo visible cuando el cliente del servicio es prioritario -->
+              <div class="col-12 oculto" id="bloque-prioritario">
+                <div class="tarjeta" style="border-color:var(--grav-rojo);background:var(--peligro-fondo)">
+                  <div class="tarjeta-cuerpo">
+                    <p class="fw-bold mb-2 d-flex align-items-center gap-2"
+                       style="color:var(--peligro)">
+                      <svg class="ico" aria-hidden="true"><use href="#i-incidencia"></use></svg>
+                      Cliente prioritario (Walmart / Bodega / Sam's)
+                    </p>
+                    <div class="row g-3">
+                      <div class="col-md-5 d-flex align-items-center">
+                        <div class="form-check mb-0">
+                          <input class="form-check-input" type="checkbox"
+                                 name="segunda_vuelta_no_cobrable" id="chk-segunda-vuelta">
+                          <label class="form-check-label" for="chk-segunda-vuelta">
+                            Hubo 2ª vuelta <strong>no cobrable</strong>
+                          </label>
+                        </div>
+                      </div>
+                      <div class="col-md-7">
+                        <label class="form-label" for="i-material">Material que quedó en el centro</label>
+                        <input type="text" class="form-control" name="material_pendiente"
+                               id="i-material" placeholder="¿Qué material quedó pendiente de recolectar?">
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+          </fieldset>
+
+          <!-- 2. Información de la incidencia -->
+          <fieldset class="bloque-form">
+            <legend>
+              <span class="numero">2</span> Información de la incidencia
+              <span class="ayuda">Qué pasó y con qué gravedad</span>
+            </legend>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="sel-tipo-incidencia">
+                  Tipo de incidencia <span class="obligatorio" aria-hidden="true">*</span>
+                </label>
+                <select class="form-select" name="tipo_incidencia_id" id="sel-tipo-incidencia" required></select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="sel-gravedad">
+                  Gravedad <span class="obligatorio" aria-hidden="true">*</span>
+                  <span class="ayuda-icono" tabindex="0" role="img"
+                        aria-label="Ayuda sobre la gravedad"
+                        data-tip="Rojo: alta. Naranja: grave de menor impacto. Amarillo: preocupación menor. Verde: solución sencilla.">
+                    <svg class="ico ico-sm" aria-hidden="true"><use href="#i-info"></use></svg>
+                  </span>
+                </label>
+                <select class="form-select" name="gravedad" id="sel-gravedad"></select>
+                <div class="form-text">Se sugiere según el tipo; puedes ajustarla.</div>
+                <div class="mt-2" id="vista-gravedad"></div>
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="i-descripcion">Descripción detallada</label>
+                <textarea class="form-control" name="descripcion" id="i-descripcion" rows="3"
+                          placeholder="¿Qué pasó exactamente?"></textarea>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- 3. Impacto operativo -->
+          <fieldset class="bloque-form">
+            <legend>
+              <span class="numero">3</span> Impacto operativo
+              <span class="ayuda">Costo en tiempo, vueltas y relación con el cliente</span>
+            </legend>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label" for="i-vueltas">Vueltas adicionales</label>
+                <input type="number" min="0" step="1" class="form-control"
+                       name="vueltas_adicionales" id="i-vueltas" value="0">
+                <div class="form-text">Recolecciones extra que hubo que hacer.</div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="i-retraso">Tiempo de retraso (min)</label>
+                <input type="number" min="0" step="1" class="form-control"
+                       name="minutos_retraso" id="i-retraso" value="0">
+              </div>
+              <div class="col-md-4">
+                <span class="form-label d-block" id="lbl-reporto">¿Hubo reporte del cliente?</span>
+                <div class="opciones-linea" role="radiogroup" aria-labelledby="lbl-reporto">
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="radio" name="reporto_cliente" value="no" checked id="rc-no">
+                    <label class="form-check-label" for="rc-no">No</label>
+                  </div>
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="radio" name="reporto_cliente" value="si" id="rc-si">
+                    <label class="form-check-label" for="rc-si">Sí</label>
+                  </div>
+                </div>
+                <div class="form-text">Si el cliente reportó, el seguimiento lo lleva RH y jefatura.</div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- 4. Resolución y acciones aplicadas -->
+          <fieldset class="bloque-form">
+            <legend>
+              <span class="numero">4</span> Resolución y acciones aplicadas
+              <span class="ayuda">Cierre y prevención</span>
+            </legend>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <span class="form-label d-block" id="lbl-resuelta">¿Ya está resuelta?</span>
+                <div class="opciones-linea" role="radiogroup" aria-labelledby="lbl-resuelta">
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="radio" name="resuelta" value="no" checked id="re-no">
+                    <label class="form-check-label" for="re-no">No</label>
+                  </div>
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="radio" name="resuelta" value="si" id="re-si">
+                    <label class="form-check-label" for="re-si">Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12 oculto" id="bloque-resolucion">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label" for="i-fecha-res">Fecha de resolución</label>
+                    <input type="date" class="form-control" name="fecha_resolucion" id="i-fecha-res">
+                  </div>
+                  <div class="col-md-6">
+                    <span class="form-label d-block" id="lbl-atiempo">¿Se resolvió a tiempo?</span>
+                    <div class="opciones-linea" role="radiogroup" aria-labelledby="lbl-atiempo">
+                      <div class="form-check mb-0">
+                        <input class="form-check-input" type="radio" name="a_tiempo" value="si" checked id="at-si">
+                        <label class="form-check-label" for="at-si">Sí</label>
+                      </div>
+                      <div class="form-check mb-0">
+                        <input class="form-check-input" type="radio" name="a_tiempo" value="no" id="at-no">
+                        <label class="form-check-label" for="at-no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label" for="i-accion">Acción correctiva o preventiva</label>
+                <textarea class="form-control" name="accion_correctiva" id="i-accion" rows="2"
+                          placeholder="¿Qué se hizo o se hará para que no vuelva a pasar?"></textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="i-comentarios">Comentarios</label>
+                <textarea class="form-control" name="comentarios" id="i-comentarios" rows="2"></textarea>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- 5. Evidencias -->
+          <fieldset class="bloque-form">
+            <legend>
+              <span class="numero">5</span> Evidencias
+              <span class="ayuda">Imágenes o PDF que respalden lo ocurrido</span>
+            </legend>
+
+            <div class="zona-soltar" id="zona-evidencias">
+              <svg class="ico" aria-hidden="true"><use href="#i-subir"></use></svg>
+              <strong>Arrastra aquí las evidencias o haz clic para elegirlas</strong>
+              <span class="form-text d-block">
+                Formatos permitidos: PNG, JPG, WEBP, GIF y PDF.
+                Las fotos se comprimen automáticamente antes de guardarse en Firebase.
+              </span>
+              <label class="solo-lectores" for="campo-evidencias">Archivos de evidencia</label>
+              <input type="file" id="campo-evidencias" multiple
+                     accept=".png,.jpg,.jpeg,.webp,.gif,.pdf">
+            </div>
+            <div class="vista-previa" id="vista-evidencias"></div>
+          </fieldset>
+
+          <div class="form-acciones">
+            <button class="btn btn-primary" type="submit">
+              <svg class="ico" aria-hidden="true"><use href="#i-guardar"></use></svg>
+              Guardar incidencia
+            </button>
+            <button class="btn btn-contorno" type="button" data-limpiar-form>
+              <svg class="ico" aria-hidden="true"><use href="#i-limpiar"></use></svg>
+              Limpiar
+            </button>
+            <button class="btn btn-contorno" type="button" data-ir="dashboard">
+              <svg class="ico" aria-hidden="true"><use href="#i-x"></use></svg>
+              Cancelar
+            </button>
+            <span class="aviso-cambios oculto" data-aviso-cambios>
+              <svg class="ico ico-sm" aria-hidden="true"><use href="#i-alerta"></use></svg>
+              Hay cambios sin guardar
+            </span>
+          </div>
+        </form>
+      </section>
+
+      <!-- =============== Pendientes =============== -->
+      <section id="seccion-pendientes" class="oculto" aria-labelledby="titulo-pendientes">
+        <div class="seccion-cabecera">
+          <h2 id="titulo-pendientes">Incidencias abiertas</h2>
+          <p>Incidencias registradas que todavía no se han marcado como resueltas.</p>
+        </div>
+        <div id="lista-pendientes"></div>
+      </section>
+
+      <!-- =============== Clientes =============== -->
+      <section id="seccion-clientes" class="oculto" aria-labelledby="titulo-clientes">
+        <div class="seccion-cabecera">
+          <h2 id="titulo-clientes">Catálogo de clientes</h2>
+          <p>Clientes con recolección y sus condiciones comerciales.</p>
+        </div>
+
+        <div class="tarjeta mb-4">
+          <div class="tabla-herramientas">
+            <div class="buscador">
+              <svg class="ico" aria-hidden="true"><use href="#i-buscar"></use></svg>
+              <label class="solo-lectores" for="buscar-clientes">Buscar cliente</label>
+              <input type="search" class="form-control form-control-sm" id="buscar-clientes"
+                     placeholder="Buscar cliente, categoría o estado…">
+            </div>
+            <span class="etiqueta etiqueta-neutra" id="conteo-clientes">0 clientes</span>
+          </div>
+          <div class="tabla-envoltura tabla-fija-alto">
+            <table class="tabla-datos a-tarjetas" id="tabla-clientes-tabla">
+              <caption class="solo-lectores">Catálogo de clientes registrados</caption>
+              <thead>
+                <tr>
+                  <th data-orden="texto" scope="col">Cliente</th>
+                  <th data-orden="texto" scope="col">Categoría</th>
+                  <th data-orden="texto" scope="col">Estado</th>
+                  <th data-orden="texto" scope="col">Frecuencia</th>
+                  <th data-orden="texto" scope="col">Estatus</th>
+                  <th data-orden="texto" scope="col">Cobro por recolección</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-clientes"></tbody>
+            </table>
           </div>
         </div>
-        <div class="col-12">
-          <label class="form-label">Acción correctiva o preventiva</label>
-          <textarea class="form-control" name="accion_correctiva" rows="2"
-                    placeholder="¿Qué se hizo o se hará para que no vuelva a pasar?"></textarea>
+
+        <div class="seccion-cabecera">
+          <h2>Dar de alta un cliente nuevo</h2>
+          <p>Los clientes con cobro por recolección se tratan como prioritarios.</p>
         </div>
-        <div class="col-12">
-          <label class="form-label">Comentarios</label>
-          <textarea class="form-control" name="comentarios" rows="2"></textarea>
+
+        <form id="form-cliente" style="max-width:860px" data-guardar-cambios novalidate>
+          <fieldset class="bloque-form">
+            <legend>
+              <span class="numero">1</span> Datos del cliente
+            </legend>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="c-nombre">Nombre <span class="obligatorio" aria-hidden="true">*</span></label>
+                <input type="text" class="form-control" name="nombre" id="c-nombre" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label" for="sel-categoria">Categoría</label>
+                <select class="form-select" name="categoria" id="sel-categoria"></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label" for="sel-estado">Estado</label>
+                <select class="form-select" name="estado" id="sel-estado"></select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="sel-frecuencia">Frecuencia</label>
+                <select class="form-select" name="frecuencia" id="sel-frecuencia"></select>
+              </div>
+              <div class="col-md-4 d-flex align-items-end">
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" name="activo" checked id="cl-activo">
+                  <label class="form-check-label" for="cl-activo">Con recolecciones activas</label>
+                </div>
+              </div>
+              <div class="col-md-4 d-flex align-items-end">
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" name="cobro_por_recoleccion" id="cl-cobro">
+                  <label class="form-check-label" for="cl-cobro">Se le cobra por recolección</label>
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="form-acciones">
+            <button class="btn btn-primary" type="submit">
+              <svg class="ico" aria-hidden="true"><use href="#i-guardar"></use></svg>
+              Guardar cliente
+            </button>
+            <button class="btn btn-contorno" type="button" data-limpiar-form>
+              <svg class="ico" aria-hidden="true"><use href="#i-limpiar"></use></svg>
+              Limpiar
+            </button>
+            <span class="aviso-cambios oculto" data-aviso-cambios>
+              <svg class="ico ico-sm" aria-hidden="true"><use href="#i-alerta"></use></svg>
+              Hay cambios sin guardar
+            </span>
+          </div>
+        </form>
+      </section>
+
+      <!-- =============== Configuración (tipos de incidencia) =============== -->
+      <section id="seccion-tipos" class="oculto" aria-labelledby="titulo-config">
+        <div class="seccion-cabecera">
+          <h2 id="titulo-config">Configuración</h2>
+          <p>Catálogo de tipos de incidencia, niveles de gravedad y datos de la sesión.</p>
         </div>
-        <div class="col-12">
-          <label class="form-label">Evidencias (imágenes o PDF)</label>
-          <input type="file" class="form-control" id="campo-evidencias" multiple
-                 accept=".png,.jpg,.jpeg,.webp,.gif,.pdf">
-          <div class="form-text">
-            Las fotos se comprimen automáticamente antes de guardarse en Firebase.
+
+        <div class="tarjeta mb-4">
+          <div class="tarjeta-cabecera">
+            <svg class="ico" aria-hidden="true"><use href="#i-tipos"></use></svg>
+            Tipos de incidencia
+          </div>
+          <div class="tabla-envoltura">
+            <table class="tabla-datos a-tarjetas">
+              <caption class="solo-lectores">Catálogo de tipos de incidencia</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Descripción</th>
+                  <th scope="col">Gravedad por defecto</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-tipos"></tbody>
+            </table>
           </div>
         </div>
-      </div>
-      <div class="mt-3">
-        <button class="btn btn-primary" type="submit">💾 Guardar incidencia</button>
-      </div>
-    </form>
-  </section>
 
-  <!-- ======================= Pendientes ======================= -->
-  <section id="seccion-pendientes" class="oculto">
-    <h3 class="mb-3">🔓 Incidencias abiertas</h3>
-    <div id="lista-pendientes"></div>
-  </section>
-
-  <!-- ======================= Clientes ======================= -->
-  <section id="seccion-clientes" class="oculto">
-    <h3 class="mb-3">👥 Catálogo de clientes</h3>
-    <div class="card shadow-sm mb-4">
-      <div class="table-responsive" style="max-height:480px">
-        <table class="table table-sm table-striped align-middle mb-0">
-          <thead class="table-light" style="position:sticky;top:0">
-            <tr><th>Cliente</th><th>Categoría</th><th>Estado</th>
-                <th>Frecuencia</th><th>Estatus</th><th>Cobro por recolección</th></tr>
-          </thead>
-          <tbody id="tabla-clientes"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <h5>➕ Dar de alta un cliente nuevo</h5>
-    <form class="card card-body shadow-sm" id="form-cliente" style="max-width:800px">
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">Nombre *</label>
-          <input type="text" class="form-control" name="nombre" required>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Categoría</label>
-          <select class="form-select" name="categoria" id="sel-categoria"></select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Estado</label>
-          <select class="form-select" name="estado" id="sel-estado"></select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Frecuencia</label>
-          <select class="form-select" name="frecuencia" id="sel-frecuencia"></select>
-        </div>
-        <div class="col-md-4 d-flex align-items-end">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="activo" checked id="cl-activo">
-            <label class="form-check-label" for="cl-activo">Con recolecciones activas</label>
+        <div class="tarjeta mb-4">
+          <div class="tarjeta-cabecera">
+            <svg class="ico" aria-hidden="true"><use href="#i-alerta"></use></svg>
+            Niveles de gravedad
+          </div>
+          <div class="tarjeta-cuerpo">
+            <p class="texto-2" style="font-size:var(--txt-sm)">
+              Los colores comunican gravedad, no navegación. Siempre van acompañados
+              del nombre del nivel y de un icono.
+            </p>
+            <div class="leyenda-gravedad" id="leyenda-gravedad-config"></div>
           </div>
         </div>
-        <div class="col-md-4 d-flex align-items-end">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="cobro_por_recoleccion" id="cl-cobro">
-            <label class="form-check-label" for="cl-cobro">Se le cobra por recolección</label>
+
+        <div class="seccion-cabecera">
+          <h2>Agregar un tipo nuevo</h2>
+        </div>
+
+        <form id="form-tipo" style="max-width:760px" data-guardar-cambios novalidate>
+          <fieldset class="bloque-form">
+            <legend><span class="numero">1</span> Datos del tipo</legend>
+            <div class="row g-3">
+              <div class="col-md-7">
+                <label class="form-label" for="t-nombre">Nombre <span class="obligatorio" aria-hidden="true">*</span></label>
+                <input type="text" class="form-control" name="nombre" id="t-nombre" required>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label" for="sel-gravedad-tipo">Gravedad por defecto</label>
+                <select class="form-select" name="gravedad_default" id="sel-gravedad-tipo"></select>
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="t-descripcion">Descripción</label>
+                <textarea class="form-control" name="descripcion" id="t-descripcion" rows="2"></textarea>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="form-acciones">
+            <button class="btn btn-primary" type="submit">
+              <svg class="ico" aria-hidden="true"><use href="#i-guardar"></use></svg>
+              Guardar tipo
+            </button>
+            <button class="btn btn-contorno" type="button" data-limpiar-form>
+              <svg class="ico" aria-hidden="true"><use href="#i-limpiar"></use></svg>
+              Limpiar
+            </button>
+            <span class="aviso-cambios oculto" data-aviso-cambios>
+              <svg class="ico ico-sm" aria-hidden="true"><use href="#i-alerta"></use></svg>
+              Hay cambios sin guardar
+            </span>
+          </div>
+        </form>
+
+        <div class="tarjeta">
+          <div class="tarjeta-cabecera">
+            <svg class="ico" aria-hidden="true"><use href="#i-usuario"></use></svg>
+            Sesión y conexión
+          </div>
+          <div class="tarjeta-cuerpo">
+            <p class="texto-2 mb-2" style="font-size:var(--txt-sm)">
+              Servidor de datos: <code id="dato-servidor-config">—</code>
+            </p>
+            <button class="btn btn-contorno btn-sm" type="button" id="btn-salir-config">
+              <svg class="ico" aria-hidden="true"><use href="#i-salir"></use></svg>
+              Cerrar sesión en este navegador
+            </button>
           </div>
         </div>
-      </div>
-      <div class="mt-3"><button class="btn btn-primary" type="submit">Guardar cliente</button></div>
-    </form>
-  </section>
+      </section>
 
-  <!-- ======================= Tipos de incidencia ======================= -->
-  <section id="seccion-tipos" class="oculto">
-    <h3 class="mb-3">🏷️ Catálogo de tipos de incidencia</h3>
-    <div class="card shadow-sm mb-4">
-      <table class="table table-sm table-striped align-middle mb-0">
-        <thead class="table-light">
-          <tr><th>Tipo</th><th>Descripción</th><th>Gravedad por defecto</th></tr>
-        </thead>
-        <tbody id="tabla-tipos"></tbody>
-      </table>
-    </div>
+      <!-- =============== Reportes =============== -->
+      <section id="seccion-reportes" class="oculto" aria-labelledby="titulo-reportes">
+        <div class="seccion-cabecera">
+          <h2 id="titulo-reportes">Reportes en Excel</h2>
+          <p>El reporte se arma en el servidor y se descarga directo a tu computadora.</p>
+        </div>
 
-    <h5>➕ Agregar un tipo nuevo</h5>
-    <form class="card card-body shadow-sm" id="form-tipo" style="max-width:700px">
-      <div class="row g-3">
-        <div class="col-md-7">
-          <label class="form-label">Nombre *</label>
-          <input type="text" class="form-control" name="nombre" required>
-        </div>
-        <div class="col-md-5">
-          <label class="form-label">Gravedad por defecto</label>
-          <select class="form-select" name="gravedad_default" id="sel-gravedad-tipo"></select>
-        </div>
-        <div class="col-12">
-          <label class="form-label">Descripción</label>
-          <textarea class="form-control" name="descripcion" rows="2"></textarea>
-        </div>
-      </div>
-      <div class="mt-3"><button class="btn btn-primary" type="submit">Guardar tipo</button></div>
-    </form>
-  </section>
+        <form id="form-reporte" class="tarjeta-reporte">
+          <fieldset class="bloque-form">
+            <legend>
+              <span class="numero">1</span> Qué quieres exportar
+            </legend>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label" for="sel-tipo-reporte">Tipo de reporte</label>
+                <select class="form-select" name="tipo" id="sel-tipo-reporte"></select>
+              </div>
+              <div class="col-md-7" id="bloque-valor-reporte">
+                <label class="form-label" id="etiqueta-valor" for="sel-valor-reporte">Periodo</label>
+                <select class="form-select" name="valor" id="sel-valor-reporte"></select>
+              </div>
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="chk-evidencias" checked>
+                  <label class="form-check-label" for="chk-evidencias">
+                    Incluir imágenes de evidencia en el reporte
+                  </label>
+                </div>
+                <div class="form-text">
+                  Incluir evidencias hace el archivo más pesado y tarda un poco más.
+                </div>
+              </div>
+            </div>
+          </fieldset>
 
-  <!-- ======================= Reportes ======================= -->
-  <section id="seccion-reportes" class="oculto">
-    <h3 class="mb-3">📄 Reportes en Excel</h3>
-    <form class="card card-body shadow-sm" id="form-reporte" style="max-width:700px">
-      <div class="row g-3">
-        <div class="col-12">
-          <label class="form-label">Tipo de reporte</label>
-          <select class="form-select" name="tipo" id="sel-tipo-reporte"></select>
-        </div>
-        <div class="col-md-6" id="bloque-valor-reporte">
-          <label class="form-label" id="etiqueta-valor">Periodo</label>
-          <select class="form-select" name="valor" id="sel-valor-reporte"></select>
-        </div>
-        <div class="col-12">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="chk-evidencias" checked>
-            <label class="form-check-label" for="chk-evidencias">
-              Incluir imágenes de evidencia en el reporte
-            </label>
+          <div class="form-acciones">
+            <button class="btn btn-primary" type="submit">
+              <svg class="ico" aria-hidden="true"><use href="#i-descargar"></use></svg>
+              Generar y descargar
+            </button>
           </div>
-        </div>
-      </div>
-      <div class="mt-3">
-        <button class="btn btn-primary" type="submit">📥 Generar y descargar</button>
-      </div>
-      <div class="form-text mt-2">
-        El reporte se arma en el servidor y se descarga directo a tu computadora.
-      </div>
-    </form>
-  </section>
-</main>
+        </form>
+      </section>
+
+    </main>
+  </div>
+</div>
 
 <!-- Indicador de carga (Render puede tardar en despertar) -->
-<div id="cargando" class="oculto">
-  <div class="spinner-border text-primary" role="status"></div>
-  <div class="small mt-2" id="texto-cargando">Cargando…</div>
+<div id="cargando" class="oculto" role="status" aria-live="polite">
+  <div class="aro" aria-hidden="true"></div>
+  <div id="texto-cargando">Cargando…</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
+<script src="js/ui.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

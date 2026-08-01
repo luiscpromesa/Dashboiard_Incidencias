@@ -1,0 +1,872 @@
+/* ===========================================================================
+   componentes.css — Piezas reutilizables de la interfaz
+   ===========================================================================
+   Tarjetas, indicadores (KPI), badges de gravedad, botones, formularios,
+   tablas, avisos tipo toast, esqueletos de carga, globos de ayuda y estados
+   vacíos. Todo se apoya en las variables de base.css.
+
+   Muchas clases de Bootstrap se redefinen aquí (no se sustituye Bootstrap:
+   se le viste con la identidad de Grupo PROMESA).
+=========================================================================== */
+
+/* ===========================================================================
+   1. Tarjetas
+=========================================================================== */
+.tarjeta,
+.card {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-sm);
+}
+
+.tarjeta-cabecera {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+  padding: .875rem 1.125rem;
+  border-bottom: 1px solid var(--borde);
+  font-weight: 600;
+  color: var(--verde-oscuro);
+}
+.tarjeta-cabecera .ico { color: var(--verde); }
+.tarjeta-cabecera .contador {
+  margin-left: auto;
+  font-size: var(--txt-xs);
+  font-weight: 600;
+  color: var(--texto-2);
+  background: var(--superficie-2);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-full);
+  padding: .2rem .55rem;
+}
+.tarjeta-cuerpo { padding: 1.125rem; }
+
+/* Tarjeta de acceso rápido (pantalla de Inicio) */
+.tarjeta-accion {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding: 1.125rem;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-sm);
+  color: var(--texto);
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: transform var(--trans), box-shadow var(--trans),
+              border-color var(--trans);
+}
+.tarjeta-accion:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sombra);
+  border-color: var(--verde);
+  text-decoration: none;
+  color: var(--texto);
+}
+.tarjeta-accion .titulo {
+  font-weight: 700;
+  color: var(--verde-oscuro);
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.tarjeta-accion .detalle { font-size: var(--txt-sm); color: var(--texto-2); }
+
+/* Bloque de bienvenida con el logotipo */
+.bienvenida {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 1.75rem;
+  background: linear-gradient(180deg, var(--verde-claro), var(--superficie));
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-lg);
+  margin-bottom: 1.25rem;
+}
+.bienvenida img {
+  width: 100%;
+  max-width: 260px;
+  height: auto;          /* conserva la proporción del logotipo */
+}
+.bienvenida .texto { flex: 1 1 320px; min-width: 0; }
+.bienvenida h2 { font-size: var(--txt-xl); margin: 0 0 .375rem; }
+.bienvenida p { margin: 0; color: var(--texto-2); max-width: 62ch; }
+
+/* ===========================================================================
+   2. Tarjetas de indicadores (KPI)
+=========================================================================== */
+.kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding: 1rem 1.125rem;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-sm);
+  transition: transform var(--trans), box-shadow var(--trans);
+  overflow: hidden;
+}
+.kpi::before {                      /* filete de color del indicador */
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--kpi-color, var(--verde));
+}
+.kpi:hover { transform: translateY(-2px); box-shadow: var(--sombra); }
+
+.kpi-encabezado {
+  display: flex;
+  align-items: flex-start;
+  gap: .625rem;
+}
+.kpi-icono {
+  display: grid;
+  place-items: center;
+  width: 36px; height: 36px;
+  flex: 0 0 auto;
+  border-radius: var(--radio-sm);
+  background: var(--kpi-fondo, var(--verde-claro));
+  color: var(--kpi-color, var(--verde));
+}
+.kpi-nombre {
+  font-size: var(--txt-sm);
+  color: var(--texto-2);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.kpi-valor {
+  font-size: var(--txt-2xl);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--texto);
+  letter-spacing: -.02em;
+}
+.kpi-nota {
+  font-size: var(--txt-xs);
+  color: var(--texto-2);
+  line-height: 1.35;
+}
+
+/* Tendencia respecto al periodo anterior */
+.kpi-tendencia {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: var(--txt-xs);
+  font-weight: 600;
+  border-radius: var(--radio-full);
+  padding: .15rem .5rem;
+  align-self: flex-start;
+}
+.kpi-tendencia.sube  { background: var(--exito-fondo);   color: var(--exito); }
+.kpi-tendencia.baja  { background: var(--peligro-fondo); color: var(--peligro); }
+.kpi-tendencia.plana { background: var(--superficie-2);  color: var(--texto-2); }
+.kpi-tendencia .ico { width: 14px; height: 14px; }
+
+/* ===========================================================================
+   3. Badges y etiquetas de gravedad / estado
+   El color se recibe del backend en la variable --g; nunca se comunica
+   la gravedad SOLO con color: siempre hay icono y texto.
+=========================================================================== */
+.badge-gravedad {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: var(--txt-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  padding: .2rem .55rem;
+  border-radius: var(--radio-full);
+  color: var(--g, var(--texto-2));
+  white-space: nowrap;
+  /* Respaldo para navegadores sin color-mix: el badge sigue siendo legible */
+  background: var(--superficie-2);
+  border: 1px solid var(--borde);
+}
+@supports (background: color-mix(in srgb, red 10%, white)) {
+  .badge-gravedad {
+    background: color-mix(in srgb, var(--g, #999) 12%, #fff);
+    border-color: color-mix(in srgb, var(--g, #999) 32%, #fff);
+  }
+}
+.badge-gravedad .punto {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--g, #999);
+  flex: 0 0 auto;
+}
+.badge-gravedad .ico { width: 13px; height: 13px; }
+
+/* Etiquetas de estado genéricas */
+.etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: var(--txt-xs);
+  font-weight: 600;
+  padding: .2rem .55rem;
+  border-radius: var(--radio-full);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.etiqueta .ico { width: 13px; height: 13px; }
+.etiqueta-exito   { background: var(--exito-fondo);   color: var(--exito);   border-color: rgba(6,140,69,.25); }
+.etiqueta-peligro { background: var(--peligro-fondo); color: var(--peligro); border-color: rgba(217,45,32,.25); }
+.etiqueta-aviso   { background: var(--aviso-fondo);   color: var(--aviso);   border-color: rgba(181,71,8,.25); }
+.etiqueta-info    { background: var(--info-fondo);    color: var(--info);    border-color: rgba(19,75,141,.25); }
+.etiqueta-neutra  { background: var(--superficie-2);  color: var(--texto-2); border-color: var(--borde); }
+
+/* Leyenda de niveles de gravedad */
+.leyenda-gravedad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+/* ===========================================================================
+   4. Botones (sobre Bootstrap)
+=========================================================================== */
+.btn {
+  --bs-btn-border-radius: var(--radio-sm);
+  --bs-btn-font-weight: 600;
+  --bs-btn-font-size: var(--txt-base);
+  --bs-btn-padding-y: .5rem;
+  --bs-btn-padding-x: .9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  transition: transform var(--trans), box-shadow var(--trans),
+              background-color var(--trans), border-color var(--trans);
+}
+.btn:active { transform: translateY(1px); }
+.btn .ico { width: 17px; height: 17px; }
+
+.btn-primary {
+  --bs-btn-bg: var(--verde);
+  --bs-btn-border-color: var(--verde);
+  --bs-btn-hover-bg: var(--verde-oscuro);
+  --bs-btn-hover-border-color: var(--verde-oscuro);
+  --bs-btn-active-bg: var(--verde-oscuro);
+  --bs-btn-active-border-color: var(--verde-oscuro);
+  --bs-btn-disabled-bg: #9CC9B2;
+  --bs-btn-disabled-border-color: #9CC9B2;
+}
+.btn-primary:hover { box-shadow: 0 4px 12px rgba(6, 140, 69, .28); }
+
+.btn-secundario {
+  --bs-btn-color: var(--azul);
+  --bs-btn-bg: var(--azul-claro);
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--azul);
+  --bs-btn-hover-border-color: var(--azul);
+  --bs-btn-active-bg: var(--azul);
+  --bs-btn-active-color: #fff;
+}
+
+.btn-contorno {
+  --bs-btn-color: var(--texto);
+  --bs-btn-bg: var(--superficie);
+  --bs-btn-border-color: var(--borde);
+  --bs-btn-hover-color: var(--verde-oscuro);
+  --bs-btn-hover-bg: var(--verde-claro);
+  --bs-btn-hover-border-color: var(--verde);
+  --bs-btn-active-bg: var(--verde-claro);
+  --bs-btn-active-color: var(--verde-oscuro);
+  --bs-btn-active-border-color: var(--verde);
+}
+
+.btn-sm {
+  --bs-btn-padding-y: .3rem;
+  --bs-btn-padding-x: .6rem;
+  --bs-btn-font-size: var(--txt-sm);
+}
+
+/* Botón solo con icono (siempre con aria-label o title) */
+.btn-icono {
+  width: 32px; height: 32px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--borde);
+  background: var(--superficie);
+  border-radius: var(--radio-sm);
+  color: var(--texto-2);
+  cursor: pointer;
+  transition: all var(--trans);
+}
+.btn-icono:hover { background: var(--verde-claro); color: var(--verde-oscuro); border-color: var(--verde); }
+
+/* En pantallas pequeñas se ocultan las etiquetas de los botones del
+   encabezado, pero el icono conserva su aria-label. */
+@media (max-width: 767.98px) {
+  .btn .solo-ancho { display: none; }
+  .btn { --bs-btn-padding-x: .65rem; }
+}
+
+/* ===========================================================================
+   5. Formularios
+=========================================================================== */
+.form-label {
+  font-size: var(--txt-sm);
+  font-weight: 600;
+  color: var(--texto);
+  margin-bottom: .25rem;
+}
+.form-text { font-size: var(--txt-xs); color: var(--texto-2); }
+
+.form-control, .form-select {
+  border-radius: var(--radio-sm);
+  border-color: var(--borde);
+  font-size: var(--txt-base);
+  color: var(--texto);
+  padding: .5rem .7rem;
+  transition: border-color var(--trans), box-shadow var(--trans);
+}
+.form-control:hover, .form-select:hover { border-color: var(--borde-fuerte); }
+.form-control:focus, .form-select:focus {
+  border-color: var(--verde);
+  box-shadow: 0 0 0 3px rgba(6, 140, 69, .15);
+}
+.form-control::placeholder { color: #A7B0AC; }
+.form-control-sm, .form-select-sm { font-size: var(--txt-sm); padding: .35rem .55rem; }
+
+.form-check-input:checked {
+  background-color: var(--verde);
+  border-color: var(--verde);
+}
+.form-check-input:focus {
+  border-color: var(--verde);
+  box-shadow: 0 0 0 3px rgba(6, 140, 69, .15);
+}
+.form-check-label { font-size: var(--txt-base); }
+
+/* Marca de campo obligatorio */
+.obligatorio {
+  color: var(--peligro);
+  font-weight: 700;
+  margin-left: .15rem;
+}
+
+/* Agrupación de campos por bloques temáticos */
+.bloque-form {
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 1.125rem;
+  margin-bottom: 1rem;
+  background: var(--superficie);
+}
+.bloque-form > legend {
+  float: none;
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: var(--txt-base);
+  font-weight: 700;
+  color: var(--verde-oscuro);
+  margin-bottom: .875rem;
+  padding: 0;
+}
+.bloque-form > legend .numero {
+  display: grid;
+  place-items: center;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--verde);
+  color: #fff;
+  font-size: var(--txt-xs);
+  flex: 0 0 auto;
+}
+.bloque-form > legend .ayuda {
+  font-weight: 400;
+  font-size: var(--txt-xs);
+  color: var(--texto-2);
+}
+
+/* Grupo de opciones Sí/No con aspecto de segmentos */
+.opciones-linea {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  min-height: 38px;
+}
+
+/* Barra de acciones fija al pie del formulario */
+.form-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+  padding-top: .25rem;
+}
+.form-acciones .aviso-cambios {
+  margin-left: auto;
+  font-size: var(--txt-xs);
+  color: var(--aviso);
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+}
+
+/* Validación */
+.form-control.invalido, .form-select.invalido {
+  border-color: var(--peligro);
+  box-shadow: 0 0 0 3px rgba(217, 45, 32, .12);
+}
+.mensaje-error {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: var(--txt-xs);
+  color: var(--peligro);
+  margin-top: .25rem;
+}
+
+/* --- Área de arrastrar y soltar evidencias ------------------------------- */
+.zona-soltar {
+  position: relative;
+  border: 2px dashed var(--borde-fuerte);
+  border-radius: var(--radio);
+  background: var(--superficie-2);
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: var(--texto-2);
+  cursor: pointer;
+  transition: border-color var(--trans), background var(--trans);
+}
+.zona-soltar:hover,
+.zona-soltar.encima {
+  border-color: var(--verde);
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+}
+.zona-soltar .ico { width: 28px; height: 28px; color: var(--verde); }
+.zona-soltar strong { display: block; margin-top: .5rem; color: var(--texto); }
+
+/* El input real se mantiene en el DOM (app.js lo lee) pero invisible */
+.zona-soltar input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.vista-previa {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .625rem;
+  margin-top: .75rem;
+}
+.vista-previa figure {
+  width: 96px;
+  margin: 0;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-sm);
+  overflow: hidden;
+  background: var(--superficie);
+}
+.vista-previa img {
+  width: 100%;
+  height: 68px;
+  object-fit: cover;
+  display: block;
+}
+.vista-previa .sin-imagen {
+  height: 68px;
+  display: grid;
+  place-items: center;
+  background: var(--azul-claro);
+  color: var(--azul);
+}
+.vista-previa figcaption {
+  font-size: 10px;
+  padding: .25rem .35rem;
+  color: var(--texto-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===========================================================================
+   6. Tablas
+=========================================================================== */
+.tabla-envoltura {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tabla-datos {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--txt-sm);
+  margin: 0;
+}
+.tabla-datos thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--superficie-2);
+  color: var(--texto-2);
+  font-weight: 700;
+  font-size: var(--txt-xs);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  padding: .625rem .75rem;
+  border-bottom: 1px solid var(--borde);
+  text-align: left;
+}
+.tabla-datos tbody td {
+  padding: .625rem .75rem;
+  border-bottom: 1px solid var(--borde);
+  vertical-align: middle;
+  color: var(--texto);
+}
+.tabla-datos tbody tr { transition: background var(--trans); }
+.tabla-datos tbody tr:hover { background: var(--verde-claro); }
+.tabla-datos tbody tr:last-child td { border-bottom: 0; }
+
+/* Resaltado discreto de incidencias críticas */
+.tabla-datos tbody tr.critica td:first-child { box-shadow: inset 3px 0 0 var(--grav-rojo); }
+.tabla-datos tbody tr.critica { background: rgba(217, 45, 32, .035); }
+
+/* Encabezado ordenable */
+.tabla-datos th[data-orden] { cursor: pointer; user-select: none; }
+.tabla-datos th[data-orden]:hover { color: var(--verde-oscuro); }
+.tabla-datos th[data-orden]::after {
+  content: "";
+  display: inline-block;
+  width: 0; height: 0;
+  margin-left: .35rem;
+  border: 4px solid transparent;
+  border-top-color: var(--borde-fuerte);
+  transform: translateY(2px);
+}
+.tabla-datos th[data-orden][data-dir="asc"]::after {
+  border-top-color: transparent;
+  border-bottom-color: var(--verde);
+  transform: translateY(-3px);
+}
+.tabla-datos th[data-orden][data-dir="desc"]::after { border-top-color: var(--verde); }
+
+/* Barra de herramientas de la tabla */
+.tabla-herramientas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+  padding: .75rem 1rem;
+  border-bottom: 1px solid var(--borde);
+}
+.buscador {
+  position: relative;
+  flex: 1 1 260px;
+  max-width: 380px;
+}
+.buscador .ico {
+  position: absolute;
+  left: .6rem; top: 50%;
+  transform: translateY(-50%);
+  color: var(--texto-2);
+  width: 16px; height: 16px;
+  pointer-events: none;
+}
+.buscador input { padding-left: 2rem; }
+
+/* Paginación */
+.paginacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem 1rem;
+  border-top: 1px solid var(--borde);
+  background: var(--superficie-2);
+  font-size: var(--txt-sm);
+  color: var(--texto-2);
+}
+.paginacion .paginas { display: flex; gap: .25rem; margin-left: auto; }
+.paginacion button {
+  min-width: 32px; height: 32px;
+  padding: 0 .5rem;
+  border: 1px solid var(--borde);
+  background: var(--superficie);
+  border-radius: var(--radio-sm);
+  color: var(--texto);
+  font-size: var(--txt-sm);
+  cursor: pointer;
+  transition: all var(--trans);
+}
+.paginacion button:hover:not(:disabled) { background: var(--verde-claro); border-color: var(--verde); }
+.paginacion button[aria-current="page"] {
+  background: var(--verde);
+  border-color: var(--verde);
+  color: #fff;
+  font-weight: 700;
+}
+.paginacion button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Enlaces de evidencia dentro de la tabla */
+.enlace-evidencia {
+  display: inline-flex;
+  align-items: center;
+  gap: .2rem;
+  font-size: var(--txt-xs);
+  padding: .15rem .4rem;
+  border-radius: var(--radio-sm);
+  background: var(--azul-claro);
+  color: var(--azul);
+  margin-right: .2rem;
+  text-decoration: none;
+}
+.enlace-evidencia:hover { background: var(--azul); color: #fff; text-decoration: none; }
+
+/* Celda de comentarios: no dejar que reviente el ancho */
+.celda-larga {
+  max-width: 280px;
+  white-space: normal;
+  color: var(--texto-2);
+  font-size: var(--txt-xs);
+}
+
+/* --- Móvil: cada fila se convierte en tarjeta --------------------------- */
+@media (max-width: 767.98px) {
+  .tabla-datos.a-tarjetas thead { display: none; }
+  .tabla-datos.a-tarjetas tbody tr {
+    display: grid;
+    grid-template-columns: minmax(9rem, auto) 1fr;
+    gap: .1rem .75rem;
+    padding: .75rem 1rem;
+    border-bottom: 1px solid var(--borde);
+  }
+  .tabla-datos.a-tarjetas tbody td {
+    display: contents;
+    border: 0;
+    padding: 0;
+  }
+  .tabla-datos.a-tarjetas tbody td::before {
+    content: attr(data-etiqueta);
+    font-size: var(--txt-xs);
+    font-weight: 600;
+    color: var(--texto-2);
+    padding: .15rem 0;
+  }
+  .tabla-datos.a-tarjetas tbody td > * { grid-column: 2; }
+  .celda-larga { max-width: none; }
+}
+
+/* ===========================================================================
+   7. Avisos tipo toast
+   avisar() de app.js sigue generando .alert.alert-success/danger/warning/info
+=========================================================================== */
+#avisos {
+  position: fixed;
+  top: 84px;
+  right: 1rem;
+  z-index: 2200;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  width: min(380px, calc(100vw - 2rem));
+  pointer-events: none;
+}
+#avisos .alert {
+  pointer-events: auto;
+  margin: 0;
+  border-radius: var(--radio);
+  border: 1px solid var(--borde);
+  border-left-width: 4px;
+  box-shadow: var(--sombra-md);
+  background: var(--superficie);
+  color: var(--texto);
+  font-size: var(--txt-sm);
+  padding: .75rem 2.25rem .75rem .875rem;
+  animation: aparecer var(--trans-lenta) both;
+}
+#avisos .alert-success { border-left-color: var(--exito); }
+#avisos .alert-danger  { border-left-color: var(--peligro); }
+#avisos .alert-warning { border-left-color: var(--aviso); }
+#avisos .alert-info    { border-left-color: var(--info); }
+#avisos .alert .btn-close { padding: .875rem; }
+#avisos .aviso-fila { display: flex; gap: .5rem; align-items: flex-start; }
+#avisos .aviso-fila .ico { margin-top: .1rem; }
+#avisos .alert-success .ico { color: var(--exito); }
+#avisos .alert-danger .ico  { color: var(--peligro); }
+#avisos .alert-warning .ico { color: var(--aviso); }
+#avisos .alert-info .ico    { color: var(--info); }
+
+/* ===========================================================================
+   8. Esqueletos de carga
+=========================================================================== */
+@keyframes brillo {
+  from { background-position: -320px 0; }
+  to   { background-position: 320px 0; }
+}
+.esqueleto {
+  background: linear-gradient(90deg, #EDF1EF 25%, #F7F9F8 50%, #EDF1EF 75%);
+  background-size: 640px 100%;
+  animation: brillo 1.3s linear infinite;
+  border-radius: var(--radio-sm);
+}
+.esqueleto-kpi { height: 118px; border-radius: var(--radio); }
+.esqueleto-grafica { height: 320px; border-radius: var(--radio); }
+.esqueleto-linea { height: 14px; margin-bottom: .5rem; }
+
+/* ===========================================================================
+   9. Globos de ayuda (tooltips) — CSS puro, sin dependencias
+=========================================================================== */
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--texto);
+  color: #fff;
+  font-size: var(--txt-xs);
+  font-weight: 500;
+  line-height: 1.35;
+  padding: .4rem .6rem;
+  border-radius: var(--radio-sm);
+  width: max-content;
+  max-width: 260px;
+  text-align: left;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--trans), transform var(--trans);
+  z-index: 1500;
+  box-shadow: var(--sombra);
+}
+[data-tip]:hover::after,
+[data-tip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Icono de ayuda junto a un título */
+.ayuda-icono {
+  color: var(--texto-2);
+  cursor: help;
+  display: inline-flex;
+}
+.ayuda-icono:hover { color: var(--verde); }
+
+/* ===========================================================================
+   10. Estados vacíos
+=========================================================================== */
+.estado-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+  padding: 2.5rem 1.25rem;
+  text-align: center;
+  color: var(--texto-2);
+}
+.estado-vacio .ico {
+  width: 40px; height: 40px;
+  color: var(--verde);
+  opacity: .7;
+}
+.estado-vacio strong { color: var(--texto); font-size: var(--txt-md); }
+.estado-vacio p { margin: 0; max-width: 46ch; font-size: var(--txt-sm); }
+
+/* ===========================================================================
+   11. Gráficas
+=========================================================================== */
+.tarjeta-grafica {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-sm);
+  overflow: hidden;
+  animation: aparecer var(--trans-lenta) both;
+}
+.tarjeta-grafica .cabecera {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem 1rem .25rem;
+  font-size: var(--txt-sm);
+  font-weight: 700;
+  color: var(--verde-oscuro);
+}
+.tarjeta-grafica .cabecera .ico { color: var(--verde); }
+.tarjeta-grafica .lienzo { padding: 0 .25rem .25rem; }
+.tarjeta-grafica .modebar { display: none; }
+
+/* ===========================================================================
+   12. Pantalla de acceso
+=========================================================================== */
+.pantalla-acceso {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(1100px 520px at 50% -10%, var(--verde-claro), transparent 70%),
+    var(--fondo);
+}
+.caja-acceso {
+  width: min(440px, 100%);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-lg);
+  box-shadow: var(--sombra-md);
+  padding: 2rem 1.75rem;
+  text-align: center;
+  animation: aparecer var(--trans-lenta) both;
+}
+.caja-acceso img {
+  width: 100%;
+  max-width: 230px;
+  height: auto;
+  margin-bottom: 1.25rem;
+}
+.caja-acceso h1 { font-size: var(--txt-lg); margin-bottom: .375rem; }
+.caja-acceso p { color: var(--texto-2); font-size: var(--txt-sm); }
+.caja-acceso .input-group { margin-top: 1rem; }
+.caja-acceso .form-control { border-radius: var(--radio-sm) 0 0 var(--radio-sm); }
+.caja-acceso .btn { border-radius: 0 var(--radio-sm) var(--radio-sm) 0; }
+
+/* ===========================================================================
+   13. Indicador de carga a pantalla completa
+=========================================================================== */
+#cargando {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  background: rgba(244, 246, 245, .82);
+  backdrop-filter: blur(2px);
+  z-index: 2400;
+}
+#cargando .aro {
+  width: 44px; height: 44px;
+  border: 4px solid var(--verde-claro);
+  border-top-color: var(--verde);
+  border-radius: 50%;
+  animation: girar .8s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+#cargando #texto-cargando {
+  font-size: var(--txt-sm);
+  color: var(--texto-2);
+  max-width: 34ch;
+  text-align: center;
+}

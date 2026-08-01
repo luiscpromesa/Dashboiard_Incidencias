@@ -1,26 +1,124 @@
-/* Estilos del frontend (sobre Bootstrap) */
-body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+/* ===========================================================================
+   estilos.css — Ajustes propios de cada pantalla
+   ===========================================================================
+   Este archivo se carga al final y contiene lo específico de las vistas
+   (filtros activos, historial, clientes, reportes) y la hoja de impresión.
 
-.card { border-radius: 0.6rem; }
-table th { white-space: nowrap; }
+   Orden de carga de los estilos:
+     1. bootstrap        → rejilla y utilidades base
+     2. css/base.css     → paleta, tipografía, tokens
+     3. css/layout.css   → menú lateral, encabezado, contenido
+     4. css/componentes.css → tarjetas, KPIs, tablas, formularios…
+     5. css/estilos.css  → este archivo
+=========================================================================== */
 
-/* Sección o elemento oculto */
-.oculto { display: none !important; }
-
-/* Enlace activo de la barra de navegación */
-.nav-link.activa { font-weight: 600; text-decoration: underline; }
-
-/* Indicador de carga centrado sobre la pantalla */
-#cargando {
-  position: fixed;
-  inset: 0;
+/* ---------------------------------------------------------------------------
+   Filtros activos
+--------------------------------------------------------------------------- */
+.filtros-activos {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.75);
-  z-index: 2000;
+  gap: .375rem;
 }
 
-/* Avisos apilados en la parte superior */
-#avisos { position: sticky; top: 0.5rem; z-index: 1500; }
+.chip-filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: var(--txt-xs);
+  font-weight: 600;
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+  border: 1px solid rgba(6, 140, 69, .25);
+  border-radius: var(--radio-full);
+  padding: .2rem .3rem .2rem .6rem;
+  animation: aparecer var(--trans) both;
+}
+.chip-filtro .clave { color: var(--texto-2); font-weight: 500; }
+.chip-filtro button {
+  border: 0;
+  background: none;
+  color: inherit;
+  line-height: 1;
+  padding: 0 .15rem;
+  cursor: pointer;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+}
+.chip-filtro button:hover { background: rgba(6, 140, 69, .18); }
+
+/* Contador de filtros activos en la cabecera del panel */
+.contador-filtros {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 .35rem;
+  border-radius: var(--radio-full);
+  background: var(--verde);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------------
+   Inicio
+--------------------------------------------------------------------------- */
+.inicio-accesos {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  margin-bottom: 1.25rem;
+}
+
+.inicio-nota {
+  display: flex;
+  gap: .75rem;
+  align-items: flex-start;
+  background: var(--azul-claro);
+  border: 1px solid rgba(19, 75, 141, .18);
+  border-radius: var(--radio);
+  padding: 1rem 1.125rem;
+  font-size: var(--txt-sm);
+  color: var(--texto);
+}
+.inicio-nota .ico { color: var(--azul); flex: 0 0 auto; margin-top: .1rem; }
+
+/* ---------------------------------------------------------------------------
+   Buscador de cliente (autocompletado sobre el <select> existente)
+--------------------------------------------------------------------------- */
+.campo-autocompletar { position: relative; }
+.campo-autocompletar .pista {
+  font-size: var(--txt-xs);
+  color: var(--texto-2);
+  margin-top: .25rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Pendientes y clientes
+--------------------------------------------------------------------------- */
+.tabla-fija-alto { max-height: 480px; overflow-y: auto; }
+
+/* ---------------------------------------------------------------------------
+   Reportes
+--------------------------------------------------------------------------- */
+.tarjeta-reporte { max-width: 720px; }
+
+/* ---------------------------------------------------------------------------
+   Impresión: se ocultan menú y encabezado, se conserva el contenido
+--------------------------------------------------------------------------- */
+@media print {
+  .barra-lateral,
+  .barra-superior,
+  .panel-filtros,
+  .fondo-lateral,
+  #avisos,
+  #cargando { display: none !important; }
+
+  .app { grid-template-columns: 1fr; }
+  .area-contenido { padding: 0; }
+  .tarjeta, .card, .kpi, .tarjeta-grafica { box-shadow: none; break-inside: avoid; }
+  body { background: #fff; }
+}

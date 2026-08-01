@@ -8,6 +8,14 @@
    - Dibujar el dashboard (KPIs, gráficas Plotly y tabla de detalle).
    - Enviar servicios, incidencias y evidencias al backend.
    - Descargar los reportes en Excel.
+
+   Nota sobre el rediseño: la lógica, las rutas del API y los cálculos son los
+   mismos de siempre. Lo único que cambió son las funciones que GENERAN HTML
+   (avisar, construirFiltros, pintarKPIs, pintarGraficas, pintarDetalle,
+   pintarClientes, pintarTipos y cargarPendientes), que ahora usan los
+   componentes visuales definidos en js/ui.js y css/componentes.css.
+   `UI` se invoca siempre de forma opcional (UI?.…) para que app.js siga
+   funcionando aunque ui.js no llegue a cargar.
 =========================================================================== */
 
 let CATALOGOS = {};       // Gravedades, colores, tipos de servicio, etc.
@@ -22,15 +30,23 @@ let OPCIONES_REPORTE = {};
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => document.querySelectorAll(selector);
 
+// Icono que acompaña a cada tipo de aviso (no depende solo del color)
+const ICONO_AVISO = {
+  success: "check", danger: "incidencia", warning: "alerta", info: "info",
+};
+
 function avisar(mensaje, tipo = "success") {
   const contenedor = $("#avisos");
   const alerta = document.createElement("div");
   alerta.className = `alert alert-${tipo} alert-dismissible fade show`;
-  alerta.innerHTML = `${mensaje}
-    <button class="btn-close" data-bs-dismiss="alert"></button>`;
+  alerta.setAttribute("role", tipo === "danger" ? "alert" : "status");
+  const icono = UI?.icono(ICONO_AVISO[tipo] || "info") || "";
+  alerta.innerHTML = `
+    <div class="aviso-fila">${icono}<div>${mensaje}</div></div>
+    <button class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar aviso"></button>`;
   contenedor.appendChild(alerta);
-  // Los avisos de éxito se van solos a los 6 segundos
-  if (tipo === "success") setTimeout(() => alerta.remove(), 6000);
+  // Los avisos de éxito e informativos se van solos; los de error se quedan
+  if (tipo === "success" || tipo === "info") setTimeout(() => alerta.remove(), 6000);
 }
 
 function cargando(activo, texto = "Cargando…") {
@@ -64,12 +80,16 @@ function llenarSelect(elemento, valores, opciones = {}) {
 // Acceso (token)
 // ---------------------------------------------------------------------------
 function mostrarAcceso(mostrar) {
+  // La pantalla de acceso ocupa todo el navegador; el armazón (menú lateral,
+  // encabezado y contenido) se oculta completo mientras no haya sesión.
   $("#acceso").classList.toggle("oculto", !mostrar);
-  $$("main > section:not(#acceso)").forEach((s) => {
+  $("#app-shell").classList.toggle("oculto", mostrar);
+  $$("main > section").forEach((s) => {
     if (mostrar) s.classList.add("oculto");
   });
   $("#nav").classList.toggle("oculto", mostrar);
-  if (!mostrar) irA("dashboard");
+  if (mostrar) $("#campo-token").focus();
+  else irA("dashboard");
 }
 
 $("#btn-entrar").addEventListener("click", async () => {
@@ -93,12 +113,24 @@ $("#btn-salir").addEventListener("click", () => {
 // ---------------------------------------------------------------------------
 function irA(seccion) {
   $$("main > section").forEach((s) => s.classList.add("oculto"));
-  $(`#seccion-${seccion}`)?.classList.remove("oculto");
-  $$(".nav-link").forEach((a) => a.classList.remove("activa"));
-  $(`.nav-link[data-seccion="${seccion}"]`)?.classList.add("activa");
+  const destino = $(`#seccion-${seccion}`);
+  destino?.classList.remove("oculto");
+  $$(".nav-link").forEach((a) => {
+    a.classList.remove("activa");
+    a.removeAttribute("aria-current");
+  });
+  const enlace = $(`.nav-link[data-seccion="${seccion}"]`);
+  enlace?.classList.add("activa");
+  enlace?.setAttribute("aria-current", "page");
+
+  // ui.js escucha este atributo para actualizar el encabezado superior
+  // y decidir si el panel de filtros aplica en esta sección.
+  document.body.dataset.seccion = seccion;
+  window.scrollTo({ top: 0, behavior: "instant" });
 
   // Cada sección recarga sus datos al entrar
   if (seccion === "dashboard") cargarDashboard();
+  if (seccion === "historial") cargarDashboard();
   if (seccion === "incidencia") cargarServiciosEnSelect();
   if (seccion === "pendientes") cargarPendientes();
   if (seccion === "clientes") pintarClientes();
@@ -153,6 +185,10 @@ async function iniciar() {
     $("input[name=fecha]").value = hoy();
     $("input[name=fecha_resolucion]").value = hoy();
 
+    // Presentación: leyenda de gravedades y vista previa del nivel elegido
+    UI?.pintarLeyendaGravedad(CATALOGOS);
+    UI?.conectarVistaGravedad(CATALOGOS);
+
     mostrarAcceso(false);
   } catch (error) {
     // Si falla, probablemente no hay token válido o el backend no responde
@@ -190,6 +226,7 @@ const FILTROS_SINO = {
 
 async function cargarDashboard() {
   cargando(true);
+  UI?.esqueletosDashboard();          // Placeholders mientras llegan los datos
   try {
     const filtros = new FormData($("#form-filtros"));
     const query = new URLSearchParams();
@@ -203,6 +240,12 @@ async function cargarDashboard() {
     pintarKPIs(datos.kpis);
     pintarGraficas(datos.graficas);
     pintarDetalle(datos.detalle);
+
+    // Indicadores de la interfaz: periodo, filtros activos y hora de consulta
+    UI?.pintarFiltrosActivos();
+    UI?.actualizarPeriodo();
+    UI?.mostrarResultados((datos.detalle || []).length);
+    UI?.marcarActualizacion();
 
     if (datos.sin_datos) {
       avisar("Aún no hay servicios registrados. Comienza en «Registrar servicio».", "info");
@@ -222,10 +265,9 @@ function construirFiltros(opciones, seleccion) {
   for (const clave of CLAVES_FILTRO) {
     const valores = opciones[CAMPO_OPCIONES[clave]] || [];
     const columna = document.createElement("div");
-    columna.className = "col-6 col-md-2";
     columna.innerHTML = `
-      <label class="form-label small mb-0">${ETIQUETAS_FILTRO[clave]}</label>
-      <select class="form-select form-select-sm" name="${clave}"></select>`;
+      <label class="form-label" for="f-${clave}">${ETIQUETAS_FILTRO[clave]}</label>
+      <select class="form-select form-select-sm" name="${clave}" id="f-${clave}"></select>`;
     const select = columna.querySelector("select");
     llenarSelect(select, valores, { vacio: "Todos" });
     if (seleccion[clave]) select.value = seleccion[clave];
@@ -235,93 +277,227 @@ function construirFiltros(opciones, seleccion) {
   // Filtros Sí/No (reporte del cliente, resuelta a tiempo, solo prioritarios)
   for (const [clave, etiqueta] of Object.entries(FILTROS_SINO)) {
     const columna = document.createElement("div");
-    columna.className = "col-6 col-md-2";
     const opcionesSino = clave === "prioritario"
       ? `<option value="">Todos</option><option value="si">Sí</option>`
       : `<option value="">Todos</option><option value="si">Sí</option><option value="no">No</option>`;
     columna.innerHTML = `
-      <label class="form-label small mb-0">${etiqueta}</label>
-      <select class="form-select form-select-sm" name="${clave}">${opcionesSino}</select>`;
+      <label class="form-label" for="f-${clave}">${etiqueta}</label>
+      <select class="form-select form-select-sm" name="${clave}" id="f-${clave}">${opcionesSino}</select>`;
     if (seleccion[clave]) columna.querySelector("select").value = seleccion[clave];
     contenedor.appendChild(columna);
   }
 }
 
-function pintarKPIs(k) {
-  const tarjetas = [
-    [k.total_servicios, "Servicios registrados", "primary"],
-    [k.total_incidencias, "Incidencias", "danger"],
-    [k.pct_con_incidencia, "% con incidencia", "warning"],
-    [k.pct_sin_incidencia, "% sin incidencias ✅", "success"],
-    [`${k.retrasos} (${k.pct_retrasos})`, "Retrasos", "warning"],
-    [`${k.vueltas} (${k.pct_vueltas})`, "Vueltas extra", "warning"],
-    [k.quejas, "Reportes del cliente", "danger"],
-    [k.pct_quejas, "% de quejas", "danger"],
-    [k.pct_a_tiempo, "% resueltas a tiempo ⏱️", "success"],
-    [k.abiertas, "Abiertas 🔓", "warning"],
-    [k.cerradas, "Cerradas 🔒", "success"],
-    [k.tiempo_promedio, "Resolución promedio", "info"],
-    [k.inci_prioritarios, "Incid. prioritarios ⚠️", "danger"],
-    [k.segundas_vueltas, "2ª vueltas no cobrables", "danger"],
-  ];
-  $("#tarjetas-kpi").innerHTML = tarjetas.map(([valor, etiqueta, color]) => `
-    <div class="col-6 col-md-3 col-xl-2">
-      <div class="card text-center shadow-sm h-100 border-${color}">
-        <div class="card-body py-2">
-          <div class="fs-4 fw-bold text-${color}">${valor}</div>
-          <div class="small text-muted">${etiqueta}</div>
-        </div>
-      </div>
-    </div>`).join("");
+// Paleta de las tarjetas de indicador. El verde y el azul son corporativos;
+// el rojo y el naranja se reservan para lo que exige atención operativa.
+const TONOS_KPI = {
+  verde:   ["var(--verde)",       "var(--verde-claro)"],
+  azul:    ["var(--azul)",        "var(--azul-claro)"],
+  rojo:    ["var(--grav-rojo)",   "var(--peligro-fondo)"],
+  naranja: ["var(--grav-naranja)","var(--aviso-fondo)"],
+};
+
+/**
+ * Chip de comparación con el periodo anterior.
+ * El backend puede enviar `kpis.comparativo = { clave: { texto, direccion } }`.
+ * Mientras no lo envíe, la tarjeta muestra su nota explicativa y no se
+ * inventa ninguna cifra.
+ */
+function chipTendencia(kpis, clave) {
+  const dato = kpis.comparativo?.[clave];
+  if (!dato || !dato.texto) return "";
+  const direccion = dato.direccion || "plana";
+  const icono = { sube: "arriba", baja: "abajo" }[direccion] || "igual";
+  return `<span class="kpi-tendencia ${direccion}"
+    data-tip="Comparado con el periodo anterior" tabindex="0">
+    ${UI?.icono(icono) || ""}${UI?.escapar(dato.texto) || dato.texto}</span>`;
 }
+
+function pintarKPIs(k) {
+  // [clave, valor, nombre, icono, tono, nota breve, texto del tooltip]
+  const tarjetas = [
+    ["total_servicios", k.total_servicios, "Servicios registrados", "camion", "azul",
+     "Base de cálculo de todos los porcentajes.",
+     "Servicios de recolección registrados en el periodo filtrado, con y sin incidencias."],
+
+    ["total_incidencias", k.total_incidencias, "Total de incidencias", "incidencia", "rojo",
+     "Incidencias documentadas en el periodo.",
+     "Suma de incidencias registradas sobre los servicios del periodo filtrado."],
+
+    ["pct_sin_incidencia", k.pct_sin_incidencia, "Recolecciones sin incidencias", "check", "verde",
+     "Servicios que salieron limpios.",
+     "Porcentaje de servicios que se completaron sin ninguna incidencia asociada."],
+
+    ["pct_con_incidencia", k.pct_con_incidencia, "Servicios con incidencia", "porcentaje", "naranja",
+     "Complemento del indicador anterior.",
+     "Porcentaje de servicios que tuvieron al menos una incidencia."],
+
+    ["pct_a_tiempo", k.pct_a_tiempo, "Resueltas a tiempo", "reloj", "verde",
+     "Sobre las incidencias ya cerradas.",
+     "De las incidencias resueltas, cuántas se cerraron dentro del plazo esperado."],
+
+    ["retrasos", `${k.retrasos} (${k.pct_retrasos})`, "Total de retrasos", "reloj", "naranja",
+     "Servicios que llegaron tarde.",
+     "Número de incidencias con tiempo de retraso registrado y su peso sobre el total."],
+
+    ["vueltas", `${k.vueltas} (${k.pct_vueltas})`, "Vueltas adicionales", "repetir", "naranja",
+     "Recolecciones extra que hubo que hacer.",
+     "Vueltas adicionales generadas por incidencias y su peso sobre el total."],
+
+    ["quejas", k.quejas, "Reportes del cliente", "megafono", "rojo",
+     "Casos que el cliente escaló.",
+     "Incidencias en las que el cliente presentó un reporte o queja. El seguimiento lo llevan RH y jefatura."],
+
+    ["pct_quejas", k.pct_quejas, "% de quejas", "porcentaje", "rojo",
+     "Proporción de casos escalados.",
+     "Porcentaje de incidencias que derivaron en un reporte del cliente."],
+
+    ["inci_prioritarios", k.inci_prioritarios, "Clientes prioritarios afectados", "alerta", "rojo",
+     "Walmart, Bodega y Sam's.",
+     "Incidencias registradas en clientes con cobro por recolección, donde el impacto comercial es mayor."],
+
+    ["segundas_vueltas", k.segundas_vueltas, "2ª vueltas no cobrables", "repetir", "rojo",
+     "Costo operativo que no se recupera.",
+     "Segundas vueltas realizadas en clientes prioritarios que no se pueden facturar."],
+
+    ["abiertas", k.abiertas, "Incidencias abiertas", "pendientes", "naranja",
+     "Pendientes de cierre.",
+     "Incidencias que todavía no se marcan como resueltas."],
+
+    ["cerradas", k.cerradas, "Incidencias cerradas", "candado", "verde",
+     "Casos ya resueltos.",
+     "Incidencias marcadas como resueltas en el periodo filtrado."],
+
+    ["tiempo_promedio", k.tiempo_promedio, "Resolución promedio", "reloj", "azul",
+     "Tiempo medio hasta el cierre.",
+     "Promedio de tiempo transcurrido entre el registro y la resolución de una incidencia."],
+  ];
+
+  $("#tarjetas-kpi").className = "rejilla-kpi animar-escalonado";
+  $("#tarjetas-kpi").innerHTML = tarjetas.map(
+    ([clave, valor, nombre, icono, tono, nota, ayuda]) => {
+      const [color, fondo] = TONOS_KPI[tono] || TONOS_KPI.azul;
+      return `
+      <article class="kpi" style="--kpi-color:${color};--kpi-fondo:${fondo}"
+               tabindex="0" data-tip="${UI?.escapar(ayuda) || ayuda}">
+        <div class="kpi-encabezado">
+          <span class="kpi-icono" aria-hidden="true">${UI?.icono(icono) || ""}</span>
+          <span class="kpi-nombre">${nombre}</span>
+        </div>
+        <div class="kpi-valor">${valor ?? "—"}</div>
+        ${chipTendencia(k, clave)}
+        <p class="kpi-nota">${nota}</p>
+      </article>`;
+    }).join("");
+}
+
+// Título e icono de cada gráfica. Si el layout del backend ya trae título,
+// ese se respeta dentro del lienzo; esto es solo la cabecera de la tarjeta.
+const CABECERA_GRAFICA = {
+  tendencia_mensual: ["Tendencia mensual", "dashboard"],
+  tendencia_semanal: ["Tendencia por semana", "dashboard"],
+  por_tipo: ["Incidencias por tipo", "tipos"],
+  por_gravedad: ["Incidencias por nivel de gravedad", "alerta"],
+  por_cliente: ["Incidencias por cliente", "clientes"],
+  por_categoria: ["Comparación entre categorías de clientes", "panel"],
+  por_estado: ["Incidencias por estado", "panel"],
+  prioritarios: ["Clientes prioritarios con mayor afectación", "incidencia"],
+  frecuencia_vs_incidencias: ["Frecuencia de recolección vs. incidencias", "repetir"],
+};
 
 function pintarGraficas(graficas) {
   const contenedor = $("#graficas");
   contenedor.innerHTML = "";
 
-  const orden = ["por_tipo", "por_gravedad", "por_cliente", "por_categoria",
-                 "por_estado", "prioritarios", "frecuencia_vs_incidencias",
-                 "tendencia_mensual", "tendencia_semanal"];
+  // Primero la tendencia (lo que más se consulta), luego los desgloses
+  const orden = ["tendencia_mensual", "tendencia_semanal",
+                 "por_tipo", "por_gravedad", "por_cliente", "por_categoria",
+                 "por_estado", "prioritarios", "frecuencia_vs_incidencias"];
+
+  let dibujadas = 0;
   for (const nombre of orden) {
     if (!graficas[nombre]) continue;
-    const columna = document.createElement("div");
-    columna.className = "col-md-6";
-    columna.innerHTML = `<div class="card shadow-sm"><div id="g-${nombre}"></div></div>`;
-    contenedor.appendChild(columna);
-    Plotly.newPlot(`g-${nombre}`, graficas[nombre].data, graficas[nombre].layout,
-                   { responsive: true, displayModeBar: false });
+    const [titulo, icono] = CABECERA_GRAFICA[nombre] || [nombre, "panel"];
+
+    const tarjeta = document.createElement("section");
+    tarjeta.className = "tarjeta-grafica";
+    tarjeta.style.animationDelay = `${Math.min(dibujadas, 6) * 40}ms`;
+    tarjeta.innerHTML = `
+      <h3 class="cabecera">${UI?.icono(icono) || ""}${titulo}</h3>
+      <div class="lienzo"><div id="g-${nombre}" role="img"
+        aria-label="Gráfica: ${titulo}"></div></div>`;
+    contenedor.appendChild(tarjeta);
+
+    Plotly.newPlot(`g-${nombre}`,
+                   graficas[nombre].data,
+                   UI?.temaGrafica(graficas[nombre].layout) || graficas[nombre].layout,
+                   UI?.CONFIG_GRAFICA || { responsive: true, displayModeBar: false });
+    dibujadas++;
+  }
+
+  // Mensaje claro cuando no hay nada que graficar
+  if (!dibujadas) {
+    contenedor.innerHTML = `
+      <div class="tarjeta">
+        <div class="estado-vacio">
+          ${UI?.icono("hoja") || ""}
+          <strong>Sin datos para graficar</strong>
+          <p>No hay incidencias que cumplan los filtros seleccionados.
+             Prueba a ampliar el periodo o a limpiar los filtros.</p>
+        </div>
+      </div>`;
   }
 }
 
 function pintarDetalle(incidencias) {
   const colores = CATALOGOS.colores_gravedad || {};
-  const si_no = (v) => (v === null || v === undefined ? "—" : v ? "Sí" : "No");
+  const descripciones = CATALOGOS.descripcion_gravedad || {};
+  const esc = (v) => UI?.escapar(v) ?? String(v ?? "");
+  // Etiqueta Sí/No con icono; nunca se comunica el estado solo con color
+  const siNo = (v, opciones) => UI?.etiquetaSiNo(v, opciones)
+    ?? (v === null || v === undefined ? "—" : v ? "Sí" : "No");
 
   $("#tabla-detalle").innerHTML = incidencias.map((i) => {
-    const evidencias = (i.evidencias || []);
+    const evidencias = i.evidencias || [];
     const enlaces = evidencias.length
-      ? evidencias.map((e, n) =>
-          `<a href="${e.url}" target="_blank" title="${e.nombre}">📎${n + 1}</a>`).join(" ")
-      : "—";
-    const prioritario = i.es_prioritario ? " ⚠️" : "";
-    return `<tr>
-      <td>${i.fecha || ""}</td>
-      <td>${i.cliente || ""}${prioritario}</td>
-      <td>${i.estado || ""}</td>
-      <td>${i.tipo_incidencia || ""}</td>
-      <td><span class="badge" style="background:${colores[i.gravedad] || "#999"}">${i.gravedad}</span></td>
-      <td>${i.vueltas_adicionales || 0}</td>
-      <td>${i.minutos_retraso ? i.minutos_retraso + " min" : "—"}</td>
-      <td>${si_no(i.reporto_cliente)}</td>
-      <td>${si_no(i.resuelta)}</td>
-      <td>${si_no(i.resuelta_a_tiempo)}</td>
-      <td>${i.fecha_resolucion || "—"}</td>
-      <td>${i.responsable || "—"}</td>
-      <td>${enlaces}</td>
-      <td class="small">${i.comentarios || ""}</td>
+      ? evidencias.map((e, n) => `
+          <a class="enlace-evidencia" href="${esc(e.url)}" target="_blank" rel="noopener"
+             title="Abrir ${esc(e.nombre)}" aria-label="Abrir evidencia ${n + 1}: ${esc(e.nombre)}">
+            ${UI?.icono("archivo", "ico ico-sm") || ""}${n + 1}</a>`).join("")
+      : '<span class="texto-2">—</span>';
+
+    const prioritario = i.es_prioritario
+      ? ` <span class="etiqueta etiqueta-peligro" data-tip="Cliente con cobro por recolección: el impacto comercial es mayor." tabindex="0">
+            ${UI?.icono("alerta", "ico ico-sm") || ""}Prioritario</span>`
+      : "";
+
+    // Se marcan como críticas las de gravedad Rojo o de cliente prioritario
+    const critica = i.gravedad === "Rojo" || i.es_prioritario;
+
+    return `<tr class="${critica ? "critica" : ""}">
+      <td data-etiqueta="Fecha" data-valor="${esc(i.fecha)}">${esc(i.fecha)}</td>
+      <td data-etiqueta="Cliente" data-valor="${esc(i.cliente)}">${esc(i.cliente)}${prioritario}</td>
+      <td data-etiqueta="Estado">${esc(i.estado)}</td>
+      <td data-etiqueta="Tipo">${esc(i.tipo_incidencia)}</td>
+      <td data-etiqueta="Gravedad" data-valor="${esc(i.gravedad)}">
+        ${UI?.badgeGravedad(i.gravedad, colores, descripciones) ?? esc(i.gravedad)}</td>
+      <td data-etiqueta="Vueltas" data-valor="${i.vueltas_adicionales || 0}">${i.vueltas_adicionales || 0}</td>
+      <td data-etiqueta="Retraso" data-valor="${i.minutos_retraso || 0}">
+        ${i.minutos_retraso ? i.minutos_retraso + " min" : '<span class="texto-2">—</span>'}</td>
+      <td data-etiqueta="Reportó cliente">${siNo(i.reporto_cliente, { positivoEsBueno: false })}</td>
+      <td data-etiqueta="Resuelta">${siNo(i.resuelta)}</td>
+      <td data-etiqueta="A tiempo">${siNo(i.resuelta_a_tiempo)}</td>
+      <td data-etiqueta="F. resolución" data-valor="${esc(i.fecha_resolucion)}">
+        ${i.fecha_resolucion ? esc(i.fecha_resolucion) : '<span class="texto-2">—</span>'}</td>
+      <td data-etiqueta="Responsable">${i.responsable ? esc(i.responsable) : '<span class="texto-2">—</span>'}</td>
+      <td data-etiqueta="Evidencias">${enlaces}</td>
+      <td data-etiqueta="Comentarios" class="celda-larga">${esc(i.comentarios)}</td>
     </tr>`;
-  }).join("") || `<tr><td colspan="14" class="text-center text-muted py-3">
-      Sin incidencias con los filtros seleccionados 🎉</td></tr>`;
+  }).join("");
+
+  // ui.js se encarga de la búsqueda, el ordenamiento, la paginación y del
+  // mensaje cuando no hay resultados.
+  UI?.tablaHistorial?.actualizar();
 }
 
 $("#form-filtros").addEventListener("submit", (e) => {
@@ -474,32 +650,53 @@ async function cargarPendientes() {
   try {
     const abiertas = await API.get("/api/incidencias?abiertas=1");
     const colores = CATALOGOS.colores_gravedad || {};
+    const descripciones = CATALOGOS.descripcion_gravedad || {};
+    const esc = (v) => UI?.escapar(v) ?? String(v ?? "");
 
     if (!abiertas.length) {
-      $("#lista-pendientes").innerHTML =
-        `<div class="alert alert-success">🎉 No hay incidencias pendientes.</div>`;
+      $("#lista-pendientes").innerHTML = `
+        <div class="tarjeta">
+          <div class="estado-vacio">
+            ${UI?.icono("check") || ""}
+            <strong>No hay incidencias pendientes</strong>
+            <p>Todas las incidencias registradas están cerradas. Buen trabajo.</p>
+          </div>
+        </div>`;
       return;
     }
 
     $("#lista-pendientes").innerHTML = `
-      <div class="card shadow-sm">
-        <div class="table-responsive">
-          <table class="table table-sm table-striped align-middle mb-0">
-            <thead class="table-light">
-              <tr><th>Fecha</th><th>Cliente</th><th>Tipo</th><th>Gravedad</th>
-                  <th>Responsable</th><th>Comentarios</th><th></th></tr>
+      <div class="tarjeta">
+        <div class="tarjeta-cabecera">
+          ${UI?.icono("pendientes") || ""}
+          Incidencias abiertas
+          <span class="contador">${abiertas.length}</span>
+        </div>
+        <div class="tabla-envoltura">
+          <table class="tabla-datos a-tarjetas">
+            <caption class="solo-lectores">Incidencias abiertas pendientes de cierre</caption>
+            <thead>
+              <tr><th scope="col">Fecha</th><th scope="col">Cliente</th>
+                  <th scope="col">Tipo</th><th scope="col">Gravedad</th>
+                  <th scope="col">Responsable</th><th scope="col">Comentarios</th>
+                  <th scope="col"><span class="solo-lectores">Acciones</span></th></tr>
             </thead>
             <tbody>
               ${abiertas.map((i) => `
-                <tr>
-                  <td>${i.fecha}</td>
-                  <td>${i.cliente}</td>
-                  <td>${i.tipo_incidencia}</td>
-                  <td><span class="badge" style="background:${colores[i.gravedad] || "#999"}">${i.gravedad}</span></td>
-                  <td>${i.responsable || "—"}</td>
-                  <td class="small">${i.comentarios || ""}</td>
-                  <td><button class="btn btn-success btn-sm btn-resolver"
-                        data-id="${i.id}">✅ Resolver</button></td>
+                <tr class="${i.gravedad === "Rojo" ? "critica" : ""}">
+                  <td data-etiqueta="Fecha">${esc(i.fecha)}</td>
+                  <td data-etiqueta="Cliente">${esc(i.cliente)}</td>
+                  <td data-etiqueta="Tipo">${esc(i.tipo_incidencia)}</td>
+                  <td data-etiqueta="Gravedad">
+                    ${UI?.badgeGravedad(i.gravedad, colores, descripciones) ?? esc(i.gravedad)}</td>
+                  <td data-etiqueta="Responsable">${i.responsable ? esc(i.responsable) : '<span class="texto-2">—</span>'}</td>
+                  <td data-etiqueta="Comentarios" class="celda-larga">${esc(i.comentarios)}</td>
+                  <td data-etiqueta="Acciones">
+                    <button class="btn btn-primary btn-sm btn-resolver" type="button"
+                            data-id="${esc(i.id)}"
+                            aria-label="Marcar como resuelta la incidencia de ${esc(i.cliente)} del ${esc(i.fecha)}">
+                      ${UI?.icono("check") || ""}Resolver
+                    </button></td>
                 </tr>`).join("")}
             </tbody>
           </table>
@@ -542,15 +739,27 @@ async function resolver(id) {
 // Clientes
 // ---------------------------------------------------------------------------
 function pintarClientes() {
+  const esc = (v) => UI?.escapar(v) ?? String(v ?? "");
+
   $("#tabla-clientes").innerHTML = CLIENTES.map((c) => `
     <tr>
-      <td>${c.nombre}</td>
-      <td>${c.categoria}</td>
-      <td>${c.estado}</td>
-      <td>${c.frecuencia || "—"}</td>
-      <td><span class="badge bg-${c.activo ? "success" : "secondary"}">${c.estatus}</span></td>
-      <td>${c.cobro_por_recoleccion ? "⚠️ Sí" : "No"}</td>
+      <td data-etiqueta="Cliente"><strong>${esc(c.nombre)}</strong></td>
+      <td data-etiqueta="Categoría">${esc(c.categoria)}</td>
+      <td data-etiqueta="Estado">${esc(c.estado)}</td>
+      <td data-etiqueta="Frecuencia">${c.frecuencia ? esc(c.frecuencia) : '<span class="texto-2">—</span>'}</td>
+      <td data-etiqueta="Estatus">
+        <span class="etiqueta ${c.activo ? "etiqueta-exito" : "etiqueta-neutra"}">
+          ${UI?.icono(c.activo ? "check" : "x", "ico ico-sm") || ""}${esc(c.estatus)}</span></td>
+      <td data-etiqueta="Cobro por recolección">
+        ${c.cobro_por_recoleccion
+          ? `<span class="etiqueta etiqueta-aviso"
+                   data-tip="Cliente prioritario: las incidencias aquí tienen mayor impacto comercial." tabindex="0">
+               ${UI?.icono("alerta", "ico ico-sm") || ""}Sí</span>`
+          : '<span class="etiqueta etiqueta-neutra">No</span>'}</td>
     </tr>`).join("");
+
+  // ui.js activa la búsqueda, el ordenamiento y el conteo de esta tabla
+  UI?.tablaClientes?.actualizar();
 }
 
 $("#form-cliente").addEventListener("submit", async (e) => {
@@ -586,13 +795,25 @@ $("#form-cliente").addEventListener("submit", async (e) => {
 // ---------------------------------------------------------------------------
 function pintarTipos() {
   const colores = CATALOGOS.colores_gravedad || {};
+  const descripciones = CATALOGOS.descripcion_gravedad || {};
+  const esc = (v) => UI?.escapar(v) ?? String(v ?? "");
+
   $("#tabla-tipos").innerHTML = TIPOS.map((t) => `
     <tr>
-      <td>${t.nombre}</td>
-      <td class="small">${t.descripcion || ""}</td>
-      <td><span class="badge" style="background:${colores[t.gravedad_default] || "#999"}">
-        ${t.gravedad_default}</span></td>
-    </tr>`).join("");
+      <td data-etiqueta="Tipo"><strong>${esc(t.nombre)}</strong></td>
+      <td data-etiqueta="Descripción" class="celda-larga">${esc(t.descripcion)}</td>
+      <td data-etiqueta="Gravedad por defecto">
+        ${UI?.badgeGravedad(t.gravedad_default, colores, descripciones) ?? esc(t.gravedad_default)}</td>
+    </tr>`).join("") || `
+    <tr><td colspan="3">
+      <div class="estado-vacio">
+        ${UI?.icono("tipos") || ""}
+        <strong>Sin tipos registrados</strong>
+        <p>Agrega el primer tipo de incidencia con el formulario de abajo.</p>
+      </div></td></tr>`;
+
+  // La leyenda de gravedad de esta pantalla se refresca con el catálogo actual
+  UI?.pintarLeyendaGravedad(CATALOGOS);
 }
 
 $("#form-tipo").addEventListener("submit", async (e) => {

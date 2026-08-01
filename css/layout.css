@@ -1,0 +1,467 @@
+/* ===========================================================================
+   layout.css — Armazón de la aplicación
+   ===========================================================================
+   Menú lateral plegable, encabezado superior, área de contenido y panel de
+   filtros. También concentra el comportamiento responsivo del armazón.
+=========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   Rejilla principal: lateral + contenido
+--------------------------------------------------------------------------- */
+.app {
+  display: grid;
+  grid-template-columns: var(--lateral-ancho) minmax(0, 1fr);
+  min-height: 100vh;
+  transition: grid-template-columns var(--trans-lenta);
+}
+
+/* Menú contraído (se activa con el botón del encabezado) */
+body.lateral-contraido .app {
+  grid-template-columns: var(--lateral-ancho-min) minmax(0, 1fr);
+}
+
+/* ===========================================================================
+   1. Menú lateral
+=========================================================================== */
+.barra-lateral {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--superficie);
+  border-right: 1px solid var(--borde);
+  z-index: 1050;
+  overflow: hidden;
+}
+
+/* --- Cabecera con el logotipo ------------------------------------------- */
+.lateral-marca {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+  min-height: var(--superior-alto);
+  padding: .875rem 1rem;
+  border-bottom: 1px solid var(--borde);
+}
+.lateral-marca img { display: block; }
+
+/* Logotipo horizontal: visible con el menú expandido */
+.marca-completa {
+  width: 100%;
+  max-width: 168px;
+  height: auto;         /* conserva la proporción original 1000×199 */
+}
+/* Isotipo circular: visible con el menú contraído */
+.marca-iso {
+  width: 36px;
+  height: 36px;
+  display: none;
+}
+
+body.lateral-contraido .marca-completa { display: none; }
+body.lateral-contraido .marca-iso { display: block; margin-inline: auto; }
+
+.lateral-lema {
+  font-size: var(--txt-xs);
+  color: var(--texto-2);
+  padding: .5rem 1.125rem .25rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* --- Navegación ---------------------------------------------------------- */
+.lateral-nav {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: .5rem .625rem 1rem;
+}
+.lateral-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Separador entre navegación principal y acciones secundarias */
+.lateral-separador {
+  height: 1px;
+  background: var(--borde);
+  margin: .75rem .375rem;
+}
+.lateral-grupo {
+  font-size: var(--txt-xs);
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--texto-2);
+  padding: .5rem .75rem .25rem;
+  white-space: nowrap;
+}
+
+/* Enlace de navegación. Conserva la clase .nav-link que usa app.js. */
+.barra-lateral .nav-link {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .625rem .75rem;
+  margin-bottom: 2px;
+  border-radius: var(--radio-sm);
+  color: var(--texto);
+  font-size: var(--txt-base);
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  position: relative;
+  transition: background var(--trans), color var(--trans);
+}
+.barra-lateral .nav-link .ico {
+  color: var(--texto-2);
+  transition: color var(--trans);
+}
+.barra-lateral .nav-link:hover {
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+  text-decoration: none;
+}
+.barra-lateral .nav-link:hover .ico { color: var(--verde); }
+
+/* Opción activa resaltada en verde (clase .activa, la maneja app.js) */
+.barra-lateral .nav-link.activa {
+  background: var(--verde);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(6, 140, 69, .25);
+  text-decoration: none;
+}
+.barra-lateral .nav-link.activa .ico { color: #fff; }
+
+/* Etiqueta que desaparece al contraer */
+.nav-texto { transition: opacity var(--trans); }
+body.lateral-contraido .nav-texto,
+body.lateral-contraido .lateral-grupo,
+body.lateral-contraido .lateral-lema,
+body.lateral-contraido .lateral-pie-texto { display: none; }
+body.lateral-contraido .barra-lateral .nav-link { justify-content: center; padding-inline: 0; }
+
+/* Con el menú contraído, el nombre de la sección aparece como globo */
+body.lateral-contraido .barra-lateral .nav-link::after {
+  content: attr(data-titulo);
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--texto);
+  color: #fff;
+  font-size: var(--txt-sm);
+  padding: .3rem .55rem;
+  border-radius: var(--radio-sm);
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  transition: opacity var(--trans);
+  z-index: 20;
+}
+body.lateral-contraido .barra-lateral .nav-link:hover::after,
+body.lateral-contraido .barra-lateral .nav-link:focus-visible::after { opacity: 1; }
+
+/* --- Pie del menú: acciones secundarias ---------------------------------- */
+.lateral-pie {
+  border-top: 1px solid var(--borde);
+  padding: .75rem .625rem;
+}
+.lateral-pie-texto {
+  font-size: var(--txt-xs);
+  color: var(--texto-2);
+  padding: 0 .75rem .5rem;
+  line-height: 1.35;
+}
+
+/* ===========================================================================
+   2. Encabezado superior
+=========================================================================== */
+.contenido-app {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.barra-superior {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: var(--superior-alto);
+  padding: .625rem 1.25rem;
+  background: rgba(255, 255, 255, .92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--borde);
+}
+
+.superior-titulo { min-width: 0; flex: 1 1 auto; }
+.superior-titulo h1 {
+  font-size: var(--txt-md);
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.25;
+  color: var(--verde-oscuro);
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.superior-titulo p {
+  margin: 0;
+  font-size: var(--txt-sm);
+  color: var(--texto-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.superior-acciones {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex: 0 0 auto;
+}
+
+/* Píldora informativa (periodo, última actualización) */
+.pildora-info {
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  font-size: var(--txt-xs);
+  color: var(--texto-2);
+  background: var(--superficie-2);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-full);
+  padding: .3rem .625rem;
+  white-space: nowrap;
+}
+.pildora-info .ico { width: 14px; height: 14px; color: var(--verde); }
+
+/* Botón hamburguesa / plegado */
+.btn-lateral {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px; height: 40px;
+  border: 1px solid var(--borde);
+  background: var(--superficie);
+  border-radius: var(--radio-sm);
+  color: var(--texto);
+  cursor: pointer;
+  transition: background var(--trans), border-color var(--trans);
+}
+.btn-lateral:hover { background: var(--verde-claro); border-color: var(--verde); color: var(--verde-oscuro); }
+
+/* --- Menú de usuario ----------------------------------------------------- */
+.menu-usuario { position: relative; }
+.usuario-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  border: 1px solid var(--borde);
+  background: var(--superficie);
+  border-radius: var(--radio-full);
+  padding: .25rem .625rem .25rem .25rem;
+  cursor: pointer;
+  color: var(--texto);
+  transition: background var(--trans), border-color var(--trans);
+}
+.usuario-boton:hover { background: var(--verde-claro); border-color: var(--verde); }
+.usuario-avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--verde);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: var(--txt-xs);
+  font-weight: 700;
+}
+.usuario-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 240px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-md);
+  padding: .75rem;
+  z-index: 1100;
+  animation: aparecer var(--trans) both;
+}
+.usuario-panel .dato {
+  font-size: var(--txt-xs);
+  color: var(--texto-2);
+  word-break: break-all;
+  margin-bottom: .5rem;
+}
+
+/* ===========================================================================
+   3. Área de contenido
+=========================================================================== */
+.area-contenido {
+  flex: 1 1 auto;
+  padding: 1.25rem;
+  min-width: 0;
+}
+
+/* Ancho máximo cómodo para lectura en pantallas muy grandes */
+.area-contenido > section { max-width: 1600px; }
+
+/* Cabecera interna de una sección (título + descripción) */
+.seccion-cabecera { margin-bottom: 1rem; }
+.seccion-cabecera h2 {
+  font-size: var(--txt-lg);
+  margin: 0 0 .125rem;
+}
+.seccion-cabecera p {
+  margin: 0;
+  color: var(--texto-2);
+  font-size: var(--txt-sm);
+  max-width: 78ch;
+}
+
+/* Rejilla genérica de tarjetas */
+.rejilla {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.rejilla-kpi {
+  display: grid;
+  gap: .875rem;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  margin-bottom: 1.25rem;
+}
+.rejilla-graficas {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+}
+
+/* ===========================================================================
+   4. Panel de filtros (plegable)
+=========================================================================== */
+.panel-filtros {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-sm);
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+}
+
+.filtros-cabecera {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .75rem 1rem;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  color: var(--texto);
+  font-weight: 600;
+  font-size: var(--txt-base);
+}
+.filtros-cabecera:hover { background: var(--superficie-2); }
+.filtros-cabecera .ico-chevron {
+  margin-left: auto;
+  transition: transform var(--trans);
+  color: var(--texto-2);
+}
+.panel-filtros.abierto .ico-chevron { transform: rotate(180deg); }
+
+.filtros-cuerpo {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--trans-lenta);
+}
+.panel-filtros.abierto .filtros-cuerpo { grid-template-rows: 1fr; }
+.filtros-cuerpo > div { overflow: hidden; }
+
+.filtros-rejilla {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  padding: .25rem 1rem 1rem;
+}
+
+.filtros-pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem 1rem;
+  border-top: 1px solid var(--borde);
+  background: var(--superficie-2);
+}
+
+/* ===========================================================================
+   5. Responsivo
+=========================================================================== */
+
+/* --- Tabletas: el menú arranca contraído -------------------------------- */
+@media (max-width: 1200px) {
+  .rejilla-graficas { grid-template-columns: 1fr; }
+}
+
+/* --- Móviles y tabletas verticales: menú lateral desplegable ------------ */
+@media (max-width: 991.98px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  body.lateral-contraido .app { grid-template-columns: minmax(0, 1fr); }
+
+  .barra-lateral {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(84vw, var(--lateral-ancho));
+    transform: translateX(-100%);
+    transition: transform var(--trans-lenta);
+    box-shadow: var(--sombra-md);
+  }
+  body.lateral-abierto .barra-lateral { transform: none; }
+
+  /* En móvil nunca se muestra en modo icono */
+  body.lateral-contraido .marca-completa { display: block; }
+  body.lateral-contraido .marca-iso { display: none; }
+  body.lateral-contraido .nav-texto,
+  body.lateral-contraido .lateral-grupo,
+  body.lateral-contraido .lateral-lema,
+  body.lateral-contraido .lateral-pie-texto { display: revert; }
+  body.lateral-contraido .barra-lateral .nav-link { justify-content: flex-start; padding-inline: .75rem; }
+  body.lateral-contraido .barra-lateral .nav-link::after { content: none; }
+
+  /* Fondo oscurecido detrás del menú */
+  .fondo-lateral {
+    position: fixed;
+    inset: 0;
+    background: rgba(31, 41, 51, .45);
+    z-index: 1040;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--trans);
+  }
+  body.lateral-abierto .fondo-lateral { opacity: 1; pointer-events: auto; }
+
+  .area-contenido { padding: 1rem .875rem 2rem; }
+  .superior-titulo p { display: none; }
+  .rejilla-kpi { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+}
+
+@media (max-width: 575.98px) {
+  .barra-superior { padding: .5rem .75rem; gap: .5rem; }
+  .rejilla-kpi { grid-template-columns: 1fr; }
+  .rejilla { grid-template-columns: 1fr; }
+  .filtros-rejilla { grid-template-columns: 1fr 1fr; }
+  /* Objetivos táctiles cómodos */
+  .barra-lateral .nav-link { padding-block: .75rem; }
+}
