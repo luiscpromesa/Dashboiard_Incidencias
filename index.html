@@ -178,9 +178,9 @@
       <div class="lateral-separador"></div>
       <p class="lateral-grupo">Administración</p>
       <ul>
-        <li><a class="nav-link" href="#" data-seccion="tipos" data-titulo="Configuración">
-          <svg class="ico" aria-hidden="true"><use href="#i-config"></use></svg>
-          <span class="nav-texto">Configuración</span></a></li>
+        <li><a class="nav-link" href="#" data-seccion="tipos" data-titulo="Tipos de incidencia">
+          <svg class="ico" aria-hidden="true"><use href="#i-tipos"></use></svg>
+          <span class="nav-texto">Tipos de incidencia</span></a></li>
       </ul>
     </nav>
 
@@ -361,6 +361,13 @@
               Generar un reporte
             </span>
             <span class="detalle">Descarga el concentrado en Excel, con o sin evidencias.</span>
+          </a>
+          <a class="tarjeta-accion" href="#" data-ir="tipos">
+            <span class="titulo">
+              <svg class="ico" aria-hidden="true"><use href="#i-tipos"></use></svg>
+              Tipos de incidencia
+            </span>
+            <span class="detalle">Consulta el catálogo o agrega un tipo nuevo con su gravedad.</span>
           </a>
         </div>
 
@@ -670,6 +677,10 @@
                   Tipo de incidencia <span class="obligatorio" aria-hidden="true">*</span>
                 </label>
                 <select class="form-select" name="tipo_incidencia_id" id="sel-tipo-incidencia" required></select>
+                <p class="form-text mb-0">
+                  ¿Falta el tipo que necesitas?
+                  <a href="#" data-ir="tipos">Agrégalo al catálogo</a>.
+                </p>
               </div>
               <div class="col-md-6">
                 <label class="form-label" for="sel-gravedad">
@@ -930,14 +941,21 @@
       <!-- =============== Configuración (tipos de incidencia) =============== -->
       <section id="seccion-tipos" class="oculto" aria-labelledby="titulo-config">
         <div class="seccion-cabecera">
-          <h2 id="titulo-config">Configuración</h2>
-          <p>Catálogo de tipos de incidencia, niveles de gravedad y datos de la sesión.</p>
+          <h2 id="titulo-config">Tipos de incidencia</h2>
+          <p>
+            Catálogo de tipos de incidencia y su gravedad por defecto. Aquí también
+            están los niveles de gravedad y los datos de la sesión.
+          </p>
         </div>
 
         <div class="tarjeta mb-4">
           <div class="tarjeta-cabecera">
             <svg class="ico" aria-hidden="true"><use href="#i-tipos"></use></svg>
-            Tipos de incidencia
+            Catálogo de tipos
+            <a class="btn btn-primary btn-sm ms-auto" href="#form-tipo">
+              <svg class="ico" aria-hidden="true"><use href="#i-mas"></use></svg>
+              Agregar un tipo
+            </a>
           </div>
           <div class="tabla-envoltura">
             <table class="tabla-datos a-tarjetas">
@@ -969,7 +987,11 @@
         </div>
 
         <div class="seccion-cabecera">
-          <h2>Agregar un tipo nuevo</h2>
+          <h2>Agregar un tipo de incidencia</h2>
+          <p>
+            El tipo aparecerá en el selector del formulario de registro de
+            incidencias, con la gravedad que le asignes aquí como sugerencia.
+          </p>
         </div>
 
         <form id="form-tipo" style="max-width:760px" data-guardar-cambios novalidate>

@@ -42,7 +42,7 @@ window.UI = (() => {
     pendientes: ["Pendientes", "Incidencias abiertas en espera de cierre."],
     historial:  ["Historial de incidencias", "Detalle completo con los filtros aplicados."],
     clientes:   ["Clientes", "Catálogo de clientes y condiciones de recolección."],
-    tipos:      ["Configuración", "Tipos de incidencia, gravedades y sesión."],
+    tipos:      ["Tipos de incidencia", "Catálogo de tipos, niveles de gravedad y datos de la sesión."],
     reportes:   ["Reportes", "Exportación del concentrado en Excel."],
   };
 
