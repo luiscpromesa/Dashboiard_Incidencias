@@ -82,6 +82,7 @@
   <symbol id="i-candado" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9.5 6 6 6-6"/></symbol>
   <symbol id="i-guardar" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></symbol>
+  <symbol id="i-editar" viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z"/><path d="m14.5 5.5 4 4"/></symbol>
   <symbol id="i-basura" viewBox="0 0 24 24"><path d="M3.5 6h17M8 6V4.2A1.2 1.2 0 0 1 9.2 3h5.6A1.2 1.2 0 0 1 16 4.2V6"/><path d="m18.6 6-.9 13.1A2 2 0 0 1 15.7 21H8.3a2 2 0 0 1-2-1.9L5.4 6"/></symbol>
   <symbol id="i-ojo" viewBox="0 0 24 24"><path d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-archivo" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></symbol>
@@ -479,6 +480,7 @@
                   <th data-orden="texto" scope="col">Responsable</th>
                   <th scope="col">Evidencias</th>
                   <th scope="col">Comentarios</th>
+                  <th scope="col"><span class="solo-lectores">Acciones</span></th>
                 </tr>
               </thead>
               <tbody id="tabla-detalle"></tbody>
@@ -637,7 +639,22 @@
           </p>
         </div>
 
+        <!-- Aviso que aparece solo cuando se está corrigiendo una incidencia
+             existente (desde el historial o desde pendientes). -->
+        <div class="inicio-nota oculto" id="aviso-edicion-incidencia" style="max-width:960px">
+          <svg class="ico" aria-hidden="true"><use href="#i-info"></use></svg>
+          <div>
+            <strong>Estás corrigiendo una incidencia ya registrada.</strong>
+            Se actualizará ese mismo registro, sin crear uno nuevo:
+            <span id="detalle-edicion-incidencia"></span>
+            Las evidencias que ya se subieron se conservan; las que agregues
+            aquí se suman a ellas.
+          </div>
+        </div>
+
         <form id="form-incidencia" style="max-width:960px" data-guardar-cambios novalidate>
+          <!-- Vacío al registrar; con el id de la incidencia al corregir -->
+          <input type="hidden" name="incidencia_id" id="i-id">
 
           <!-- 1. Información del cliente / servicio -->
           <fieldset class="bloque-form">
@@ -841,13 +858,17 @@
           </fieldset>
 
           <div class="form-acciones">
-            <button class="btn btn-primary" type="submit">
+            <button class="btn btn-primary" type="submit" id="btn-guardar-incidencia">
               <svg class="ico" aria-hidden="true"><use href="#i-guardar"></use></svg>
-              Guardar incidencia
+              <span id="texto-guardar-incidencia">Guardar incidencia</span>
             </button>
             <button class="btn btn-contorno" type="button" data-limpiar-form>
               <svg class="ico" aria-hidden="true"><use href="#i-limpiar"></use></svg>
               Limpiar
+            </button>
+            <button class="btn btn-contorno oculto" type="button" id="btn-cancelar-edicion-incidencia">
+              <svg class="ico" aria-hidden="true"><use href="#i-x"></use></svg>
+              Cancelar edición
             </button>
             <button class="btn btn-contorno" type="button" data-ir="dashboard">
               <svg class="ico" aria-hidden="true"><use href="#i-x"></use></svg>
@@ -898,6 +919,7 @@
                   <th data-orden="texto" scope="col">Frecuencia</th>
                   <th data-orden="texto" scope="col">Estatus</th>
                   <th data-orden="texto" scope="col">Cobro por recolección</th>
+                  <th scope="col"><span class="solo-lectores">Acciones</span></th>
                 </tr>
               </thead>
               <tbody id="tabla-clientes"></tbody>
@@ -905,12 +927,18 @@
           </div>
         </div>
 
+        <!-- Este mismo formulario sirve para dar de alta y para corregir: al
+             pulsar «Editar» en la tabla, app.js lo llena con los datos del
+             cliente y cambia los textos. -->
         <div class="seccion-cabecera">
-          <h2>Dar de alta un cliente nuevo</h2>
-          <p>Los clientes con cobro por recolección se tratan como prioritarios.</p>
+          <h2 id="titulo-form-cliente">Dar de alta un cliente nuevo</h2>
+          <p id="desc-form-cliente">Los clientes con cobro por recolección se tratan como prioritarios.</p>
         </div>
 
         <form id="form-cliente" style="max-width:860px" data-guardar-cambios novalidate>
+          <!-- Vacío al dar de alta; con el id del cliente al corregir -->
+          <input type="hidden" name="cliente_id" id="c-id">
+
           <fieldset class="bloque-form">
             <legend>
               <span class="numero">1</span> Datos del cliente
@@ -948,13 +976,17 @@
           </fieldset>
 
           <div class="form-acciones">
-            <button class="btn btn-primary" type="submit">
+            <button class="btn btn-primary" type="submit" id="btn-guardar-cliente">
               <svg class="ico" aria-hidden="true"><use href="#i-guardar"></use></svg>
-              Guardar cliente
+              <span id="texto-guardar-cliente">Guardar cliente</span>
             </button>
             <button class="btn btn-contorno" type="button" data-limpiar-form>
               <svg class="ico" aria-hidden="true"><use href="#i-limpiar"></use></svg>
               Limpiar
+            </button>
+            <button class="btn btn-contorno oculto" type="button" id="btn-cancelar-edicion-cliente">
+              <svg class="ico" aria-hidden="true"><use href="#i-x"></use></svg>
+              Cancelar edición
             </button>
             <span class="aviso-cambios oculto" data-aviso-cambios>
               <svg class="ico ico-sm" aria-hidden="true"><use href="#i-alerta"></use></svg>

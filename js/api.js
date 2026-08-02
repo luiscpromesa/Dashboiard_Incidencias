@@ -73,6 +73,17 @@ const API = {
     return respuesta.json();
   },
 
+  // Correcciones sobre un registro que ya existe (clientes e incidencias).
+  // No crea uno nuevo: reemplaza los datos del que se indica en la ruta.
+  async put(ruta, datos) {
+    const respuesta = await this.peticion(ruta, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(datos),
+    });
+    return respuesta.json();
+  },
+
   // Envío de archivos (evidencias). No lleva Content-Type: el navegador
   // lo pone solo, con el boundary correcto del multipart.
   async subirArchivos(ruta, archivos) {

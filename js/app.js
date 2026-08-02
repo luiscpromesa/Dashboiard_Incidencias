@@ -30,6 +30,11 @@ let CLIENTES = [];
 let TIPOS = [];
 let SERVICIOS = [];
 let OPCIONES_REPORTE = {};
+let DETALLE = [];         // Incidencias del historial (para el botón «Editar»)
+let PENDIENTES = [];      // Incidencias abiertas (para el botón «Editar»)
+// Está en true mientras se abre una incidencia para corregirla: evita que
+// irA() vuelva a pedir la lista de servicios por su cuenta.
+let EDITANDO_INCIDENCIA = false;
 
 // ---------------------------------------------------------------------------
 // Utilidades de interfaz
@@ -80,6 +85,123 @@ function llenarSelect(elemento, valores, opciones = {}) {
     } else {
       elemento.appendChild(new Option(v, v));
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Catálogos que se pueden ampliar desde el formulario de clientes
+// ---------------------------------------------------------------------------
+/* Categoría, Estado y Frecuencia son listas cerradas, pero se les puede
+   agregar una opción sobre la marcha con «+ Agregar nueva opción…». Lo que se
+   agrega se guarda en el servidor, así que queda disponible para todos los
+   registros siguientes y para todas las usuarias, no solo en este navegador. */
+const VALOR_NUEVA_OPCION = "__nueva__";
+
+const CATALOGOS_AMPLIABLES = {
+  "#sel-categoria":  { catalogo: "categorias",  etiqueta: "categoría" },
+  "#sel-estado":     { catalogo: "estados",     etiqueta: "estado" },
+  "#sel-frecuencia": { catalogo: "frecuencias", etiqueta: "frecuencia" },
+};
+
+/* Clave para comparar dos opciones: ignora mayúsculas, acentos y los espacios
+   sobrantes. Es la misma regla que aplica el backend, para que el aviso que ve
+   la usuaria y lo que finalmente se guarda coincidan. */
+function claveOpcion(texto) {
+  return String(texto ?? "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * Llena uno de estos selectores y le agrega al final la opción de ampliar.
+ * `seleccionado` conserva el valor actual; si ese valor ya no está en el
+ * catálogo (por ejemplo, una frecuencia heredada del Excel original), se
+ * agrega igual para no perderlo al editar un cliente.
+ */
+function llenarSelectAmpliable(selector, valores = [], seleccionado = "") {
+  const elemento = $(selector);
+  if (!elemento) return;
+
+  llenarSelect(elemento, valores);
+
+  const canonico = valores.find((v) => claveOpcion(v) === claveOpcion(seleccionado));
+  if (seleccionado && !canonico) {
+    elemento.appendChild(new Option(seleccionado, seleccionado));
+  }
+
+  const nueva = new Option("+ Agregar nueva opción…", VALOR_NUEVA_OPCION);
+  elemento.appendChild(nueva);
+
+  if (seleccionado) elemento.value = canonico ?? seleccionado;
+  elemento.dataset.previo = elemento.value;
+}
+
+/** Vuelve a dibujar los tres selectores conservando lo que estaba elegido. */
+function refrescarCatalogosAmpliables() {
+  for (const [selector, config] of Object.entries(CATALOGOS_AMPLIABLES)) {
+    const elemento = $(selector);
+    if (!elemento) continue;
+    llenarSelectAmpliable(selector, CATALOGOS[config.catalogo] || [], elemento.value);
+  }
+}
+
+function conectarCatalogosAmpliables() {
+  for (const [selector, config] of Object.entries(CATALOGOS_AMPLIABLES)) {
+    const elemento = $(selector);
+    if (!elemento) continue;
+    elemento.dataset.previo = elemento.value;
+
+    // El listener se registra una sola vez, aunque iniciar() se repita
+    if (elemento.dataset.conectado) continue;
+    elemento.dataset.conectado = "1";
+
+    elemento.addEventListener("change", () => {
+      if (elemento.value !== VALOR_NUEVA_OPCION) {
+        elemento.dataset.previo = elemento.value;
+        return;
+      }
+      // Se regresa al valor anterior antes de preguntar: si la usuaria
+      // cancela, el campo queda como estaba.
+      elemento.value = elemento.dataset.previo || "";
+      agregarOpcionCatalogo(selector, config);
+    });
+  }
+}
+
+async function agregarOpcionCatalogo(selector, { catalogo, etiqueta }) {
+  const elemento = $(selector);
+  const escrito = prompt(`Escribe la nueva ${etiqueta}:`, "");
+  if (escrito === null) return;                       // canceló
+
+  const valor = escrito.replace(/\s+/g, " ").trim();
+  if (!valor) {
+    avisar(`Escribe el nombre de la nueva ${etiqueta}.`, "danger");
+    return;
+  }
+
+  // Si ya existe (aunque cambien mayúsculas, acentos o espacios), se usa esa
+  // en lugar de crear una duplicada.
+  const yaEsta = (CATALOGOS[catalogo] || [])
+    .find((v) => claveOpcion(v) === claveOpcion(valor));
+  if (yaEsta) {
+    elemento.value = yaEsta;
+    elemento.dataset.previo = yaEsta;
+    avisar(`«${yaEsta}» ya estaba en la lista de ${etiqueta}: se seleccionó esa.`, "info");
+    return;
+  }
+
+  cargando(true, `Guardando la nueva ${etiqueta}…`);
+  try {
+    const r = await API.post(`/api/catalogos/${catalogo}/opciones`, { valor });
+    CATALOGOS[catalogo] = r.valores;
+    refrescarCatalogosAmpliables();
+    elemento.value = r.valor;
+    elemento.dataset.previo = r.valor;
+    avisar(r.mensaje, r.creada ? "success" : "info");
+  } catch (error) {
+    avisar(error.message, "danger");
+  } finally {
+    cargando(false);
   }
 }
 
@@ -138,7 +260,9 @@ function irA(seccion) {
   // Cada sección recarga sus datos al entrar
   if (seccion === "dashboard") cargarDashboard();
   if (seccion === "historial") cargarDashboard();
-  if (seccion === "incidencia") cargarServiciosEnSelect();
+  // Al abrir una incidencia para editarla, la lista de servicios ya se está
+  // cargando (y esperando) en abrirEdicionIncidencia: no se pide dos veces.
+  if (seccion === "incidencia" && !EDITANDO_INCIDENCIA) cargarServiciosEnSelect();
   if (seccion === "pendientes") cargarPendientes();
   if (seccion === "clientes") pintarClientes();
   if (seccion === "tipos") pintarTipos();
@@ -165,10 +289,12 @@ async function iniciar() {
     // Poblar los selectores fijos
     llenarSelect($("#sel-tipo-servicio"), CATALOGOS.tipos_servicio);
     llenarSelect($("#sel-resultado"), CATALOGOS.resultados);
-    llenarSelect($("#sel-categoria"), CATALOGOS.categorias);
-    llenarSelect($("#sel-estado"), CATALOGOS.estados);
-    llenarSelect($("#sel-frecuencia"), CATALOGOS.frecuencias || []);
+    // Estos tres admiten «+ Agregar nueva opción…» al final de la lista
+    llenarSelectAmpliable("#sel-categoria", CATALOGOS.categorias);
+    llenarSelectAmpliable("#sel-estado", CATALOGOS.estados);
+    llenarSelectAmpliable("#sel-frecuencia", CATALOGOS.frecuencias || []);
     if ($("#sel-frecuencia")) $("#sel-frecuencia").value = "Mensual";
+    conectarCatalogosAmpliables();
     llenarSelect($("#sel-tipo-reporte"), CATALOGOS.tipos_reporte);
 
     const gravedadesTexto = CATALOGOS.gravedades.map(
@@ -474,6 +600,7 @@ function pintarGraficas(graficas) {
 }
 
 function pintarDetalle(incidencias) {
+  DETALLE = incidencias || [];        // lo usa el botón «Editar» de cada fila
   const colores = CATALOGOS.colores_gravedad || {};
   const descripciones = CATALOGOS.descripcion_gravedad || {};
   const esc = (v) => UI?.escapar(v) ?? String(v ?? "");
@@ -516,6 +643,12 @@ function pintarDetalle(incidencias) {
       <td data-etiqueta="Responsable">${i.responsable ? esc(i.responsable) : '<span class="texto-2">—</span>'}</td>
       <td data-etiqueta="Evidencias">${enlaces}</td>
       <td data-etiqueta="Comentarios" class="celda-larga">${esc(i.comentarios)}</td>
+      <td data-etiqueta="Acciones">
+        <button class="btn btn-contorno btn-sm btn-editar-incidencia" type="button"
+                data-id="${esc(i.id)}"
+                aria-label="Editar la incidencia de ${esc(i.cliente)} del ${esc(i.fecha)}">
+          ${UI?.icono("editar", "ico ico-sm") || ""}Editar
+        </button></td>
     </tr>`;
   }).join("");
 
@@ -614,14 +747,138 @@ $$("input[name=resuelta]").forEach((radio) => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Editar una incidencia ya registrada
+// ---------------------------------------------------------------------------
+/* Se reutiliza el mismo formulario de registro. El id viaja en el campo
+   oculto #i-id: vacío significa alta; con valor, corrección del registro que
+   ya existe (no se crea uno nuevo). */
+function marcarRadio(nombre, valor) {
+  const radio = $(`input[name=${nombre}][value="${valor}"]`);
+  if (radio) radio.checked = true;
+}
+
+/**
+ * El selector solo trae los últimos servicios. Si la incidencia pertenece a
+ * uno más antiguo, se agrega su opción para que siga apuntando al mismo.
+ */
+function asegurarOpcionServicio(incidencia) {
+  const selector = $("#sel-servicio");
+  if (!selector || !incidencia.servicio_id) return;
+  if (Array.from(selector.options).some((o) => o.value === incidencia.servicio_id)) return;
+
+  const tipo = incidencia.tipo_servicio || "Recolección";
+  selector.appendChild(new Option(
+    `${incidencia.fecha} | ${incidencia.cliente} | ${tipo}`, incidencia.servicio_id));
+
+  // También en SERVICIOS, que es de donde sale el bloque de prioritarios
+  if (!SERVICIOS.some((s) => s.id === incidencia.servicio_id)) {
+    SERVICIOS.push({
+      id: incidencia.servicio_id,
+      fecha: incidencia.fecha,
+      cliente: incidencia.cliente,
+      tipo_servicio: tipo,
+      cobro_por_recoleccion: !!incidencia.cobro_por_recoleccion,
+    });
+  }
+}
+
+function llenarFormularioIncidencia(i) {
+  asegurarOpcionServicio(i);
+
+  $("#i-id").value = i.id;
+  $("#sel-servicio").value = i.servicio_id || "";
+  // El tipo se pone antes que la gravedad: al cambiarlo a mano se sugiere una
+  // gravedad, y aquí queremos conservar la que se había guardado.
+  $("#sel-tipo-incidencia").value = i.tipo_incidencia_id || "";
+  $("#sel-gravedad").value = i.gravedad || $("#sel-gravedad").value;
+  $("#i-descripcion").value = i.descripcion || "";
+  $("#i-vueltas").value = i.vueltas_adicionales || 0;
+  $("#i-retraso").value = i.minutos_retraso || 0;
+  marcarRadio("reporto_cliente", i.reporto_cliente ? "si" : "no");
+
+  marcarRadio("resuelta", i.resuelta ? "si" : "no");
+  $("#bloque-resolucion").classList.toggle("oculto", !i.resuelta);
+  $("#i-fecha-res").value = i.fecha_resolucion || hoy();
+  marcarRadio("a_tiempo", i.resuelta_a_tiempo === false ? "no" : "si");
+
+  $("#i-accion").value = i.accion_correctiva || "";
+  $("#i-comentarios").value = i.comentarios || "";
+
+  // Este bloque limpia sus campos cuando el cliente no es prioritario, así
+  // que se llena después de decidir si se muestra.
+  actualizarBloquePrioritario();
+  $("#chk-segunda-vuelta").checked = !!i.segunda_vuelta_no_cobrable;
+  $("#i-material").value = i.material_pendiente || "";
+
+  // Refresca la vista previa del nivel de gravedad de ui.js
+  $("#sel-gravedad").dispatchEvent(new Event("change"));
+
+  const evidencias = (i.evidencias || []).length;
+  $("#detalle-edicion-incidencia").textContent =
+    `${i.fecha} · ${i.cliente} · ${i.tipo_incidencia}` +
+    (evidencias ? ` (${evidencias} evidencia(s) ya guardada(s)).` : ".");
+  $("#aviso-edicion-incidencia").classList.remove("oculto");
+  $("#texto-guardar-incidencia").textContent = "Guardar cambios";
+  $("#btn-cancelar-edicion-incidencia").classList.remove("oculto");
+  $("#form-incidencia").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function abrirEdicionIncidencia(incidencia) {
+  if (!incidencia?.id) return avisar("No se encontró esa incidencia.", "danger");
+
+  EDITANDO_INCIDENCIA = true;
+  cargando(true, "Abriendo la incidencia…");
+  try {
+    irA("incidencia");
+    await cargarServiciosEnSelect();
+    llenarFormularioIncidencia(incidencia);
+  } catch (error) {
+    avisar(error.message, "danger");
+  } finally {
+    cargando(false);
+    EDITANDO_INCIDENCIA = false;
+  }
+}
+
+function salirDeEdicionIncidencia() {
+  const formulario = $("#form-incidencia");
+  formulario.reset();
+  $("#i-id").value = "";
+  $("#bloque-resolucion").classList.add("oculto");
+  $("#bloque-prioritario").classList.add("oculto");
+  $("input[name=fecha_resolucion]").value = hoy();
+  $("#aviso-edicion-incidencia").classList.add("oculto");
+  $("#texto-guardar-incidencia").textContent = "Guardar incidencia";
+  $("#btn-cancelar-edicion-incidencia").classList.add("oculto");
+}
+
+$("#btn-cancelar-edicion-incidencia").addEventListener("click", salirDeEdicionIncidencia);
+$("#form-incidencia").addEventListener("limpiado", salirDeEdicionIncidencia);
+
+// Botones «Editar» del historial y de pendientes (delegación: las tablas se
+// repintan y se paginan)
+$("#tabla-detalle").addEventListener("click", (e) => {
+  const boton = e.target.closest(".btn-editar-incidencia");
+  if (!boton) return;
+  abrirEdicionIncidencia(DETALLE.find((i) => i.id === boton.dataset.id));
+});
+
+$("#lista-pendientes").addEventListener("click", (e) => {
+  const boton = e.target.closest(".btn-editar-incidencia");
+  if (!boton) return;
+  abrirEdicionIncidencia(PENDIENTES.find((i) => i.id === boton.dataset.id));
+});
+
 $("#form-incidencia").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = new FormData(e.target);
   const resuelta = f.get("resuelta") === "si";
+  const id = f.get("incidencia_id");     // vacío = alta, con valor = edición
 
-  cargando(true, "Guardando incidencia…");
+  cargando(true, id ? "Actualizando incidencia…" : "Guardando incidencia…");
   try {
-    const respuesta = await API.post("/api/incidencias", {
+    const cuerpo = {
       servicio_id: f.get("servicio_id"),
       tipo_incidencia_id: f.get("tipo_incidencia_id"),
       gravedad: f.get("gravedad"),
@@ -636,29 +893,33 @@ $("#form-incidencia").addEventListener("submit", async (e) => {
       segunda_vuelta_no_cobrable: f.get("segunda_vuelta_no_cobrable") === "on",
       material_pendiente: f.get("material_pendiente"),
       comentarios: f.get("comentarios"),
-    });
+    };
 
-    // Subir las evidencias, si las hay
+    const respuesta = id
+      ? await API.put(`/api/incidencias/${id}`, cuerpo)
+      : await API.post("/api/incidencias", cuerpo);
+
+    const incidenciaId = id || respuesta.id;
+    const verbo = id ? "actualizada" : "guardada";
+
+    // Subir las evidencias, si las hay. Al editar se SUMAN a las que ya tenía.
     const archivos = $("#campo-evidencias").files;
     if (archivos.length) {
       cargando(true, `Subiendo ${archivos.length} evidencia(s) a Firebase…`);
       const r = await API.subirArchivos(
-        `/api/incidencias/${respuesta.id}/evidencias`, archivos);
+        `/api/incidencias/${incidenciaId}/evidencias`, archivos);
       if (r.rechazadas?.length) {
         avisar(`Archivos rechazados (formato no permitido): ${r.rechazadas.join(", ")}`, "warning");
       }
       if (r.errores?.length) {
-        avisar(`La incidencia se guardó, pero algunas evidencias no se pudieron subir: ${r.errores.join("; ")}`, "warning");
+        avisar(`La incidencia se ${verbo}, pero algunas evidencias no se pudieron subir: ${r.errores.join("; ")}`, "warning");
       }
-      avisar(`Incidencia guardada con ${r.subidas.length} evidencia(s).`);
+      avisar(`Incidencia ${verbo} con ${r.subidas.length} evidencia(s) nueva(s).`);
     } else {
-      avisar("Incidencia guardada.");
+      avisar(`Incidencia ${verbo}.`);
     }
 
-    e.target.reset();
-    $("#bloque-resolucion").classList.add("oculto");
-    $("#bloque-prioritario").classList.add("oculto");
-    $("input[name=fecha_resolucion]").value = hoy();
+    salirDeEdicionIncidencia();
   } catch (error) {
     avisar(error.message, "danger");
   } finally {
@@ -673,6 +934,7 @@ async function cargarPendientes() {
   cargando(true);
   try {
     const abiertas = await API.get("/api/incidencias?abiertas=1");
+    PENDIENTES = abiertas;             // lo usa el botón «Editar» de cada fila
     const colores = CATALOGOS.colores_gravedad || {};
     const descripciones = CATALOGOS.descripcion_gravedad || {};
     const esc = (v) => UI?.escapar(v) ?? String(v ?? "");
@@ -716,11 +978,18 @@ async function cargarPendientes() {
                   <td data-etiqueta="Responsable">${i.responsable ? esc(i.responsable) : '<span class="texto-2">—</span>'}</td>
                   <td data-etiqueta="Comentarios" class="celda-larga">${esc(i.comentarios)}</td>
                   <td data-etiqueta="Acciones">
-                    <button class="btn btn-primary btn-sm btn-resolver" type="button"
-                            data-id="${esc(i.id)}"
-                            aria-label="Marcar como resuelta la incidencia de ${esc(i.cliente)} del ${esc(i.fecha)}">
-                      ${UI?.icono("check") || ""}Resolver
-                    </button></td>
+                    <div class="fila-acciones">
+                      <button class="btn btn-primary btn-sm btn-resolver" type="button"
+                              data-id="${esc(i.id)}"
+                              aria-label="Marcar como resuelta la incidencia de ${esc(i.cliente)} del ${esc(i.fecha)}">
+                        ${UI?.icono("check") || ""}Resolver
+                      </button>
+                      <button class="btn btn-contorno btn-sm btn-editar-incidencia" type="button"
+                              data-id="${esc(i.id)}"
+                              aria-label="Editar la incidencia de ${esc(i.cliente)} del ${esc(i.fecha)}">
+                        ${UI?.icono("editar", "ico ico-sm") || ""}Editar
+                      </button>
+                    </div></td>
                 </tr>`).join("")}
             </tbody>
           </table>
@@ -780,33 +1049,108 @@ function pintarClientes() {
                    data-tip="Cliente prioritario: las incidencias aquí tienen mayor impacto comercial." tabindex="0">
                ${UI?.icono("alerta", "ico ico-sm") || ""}Sí</span>`
           : '<span class="etiqueta etiqueta-neutra">No</span>'}</td>
+      <td data-etiqueta="Acciones">
+        <button class="btn btn-contorno btn-sm btn-editar-cliente" type="button"
+                data-id="${esc(c.id)}"
+                aria-label="Editar los datos de ${esc(c.nombre)}">
+          ${UI?.icono("editar", "ico ico-sm") || ""}Editar
+        </button></td>
     </tr>`).join("");
 
   // ui.js activa la búsqueda, el ordenamiento y el conteo de esta tabla
   UI?.tablaClientes?.actualizar();
 }
 
+/** Vuelve a pedir los clientes y refresca todo lo que depende de ellos. */
+async function recargarClientes() {
+  CLIENTES = await API.get("/api/clientes");
+  llenarSelect($("#sel-cliente-servicio"), CLIENTES, {
+    valorCampo: "id",
+    textoCampo: (c) => `${c.nombre} (${c.categoria} · ${c.estado})`,
+  });
+  pintarClientes();
+}
+
+// --- Edición de un cliente ya registrado -----------------------------------
+/* El formulario de alta es el mismo que el de edición: solo cambian los
+   textos y, al guardar, la ruta a la que se envía. El id viaja en el campo
+   oculto #c-id: si está vacío es un alta, si tiene valor es una corrección. */
+const TEXTOS_ALTA_CLIENTE = {
+  titulo: "Dar de alta un cliente nuevo",
+  descripcion: "Los clientes con cobro por recolección se tratan como prioritarios.",
+  boton: "Guardar cliente",
+};
+
+function editarCliente(id) {
+  const cliente = CLIENTES.find((c) => c.id === id);
+  if (!cliente) return avisar("No se encontró ese cliente en la lista.", "danger");
+
+  $("#c-id").value = cliente.id;
+  $("#c-nombre").value = cliente.nombre || "";
+  $("#cl-activo").checked = !!cliente.activo;
+  $("#cl-cobro").checked = !!cliente.cobro_por_recoleccion;
+
+  // Si el valor guardado ya no está en el catálogo, llenarSelectAmpliable lo
+  // agrega para que no se pierda al guardar.
+  llenarSelectAmpliable("#sel-categoria", CATALOGOS.categorias || [], cliente.categoria || "");
+  llenarSelectAmpliable("#sel-estado", CATALOGOS.estados || [], cliente.estado || "");
+  llenarSelectAmpliable("#sel-frecuencia", CATALOGOS.frecuencias || [], cliente.frecuencia || "");
+
+  $("#titulo-form-cliente").textContent = `Editar «${cliente.nombre}»`;
+  $("#desc-form-cliente").textContent =
+    "Corrige lo que se capturó mal. El cambio también se refleja en los " +
+    "servicios e incidencias que ya estaban registrados de este cliente.";
+  $("#texto-guardar-cliente").textContent = "Guardar cambios";
+  $("#btn-cancelar-edicion-cliente").classList.remove("oculto");
+
+  $("#form-cliente").scrollIntoView({ behavior: "smooth", block: "start" });
+  $("#c-nombre").focus();
+}
+
+function salirDeEdicionCliente() {
+  $("#form-cliente").reset();
+  $("#c-id").value = "";
+  $("#titulo-form-cliente").textContent = TEXTOS_ALTA_CLIENTE.titulo;
+  $("#desc-form-cliente").textContent = TEXTOS_ALTA_CLIENTE.descripcion;
+  $("#texto-guardar-cliente").textContent = TEXTOS_ALTA_CLIENTE.boton;
+  $("#btn-cancelar-edicion-cliente").classList.add("oculto");
+  // El reset deja los selectores en su primera opción: se redibujan para
+  // quitar cualquier valor heredado que se hubiera agregado al editar.
+  refrescarCatalogosAmpliables();
+}
+
+// Delegación: la tabla se repinta y se pagina, así que el listener va en el
+// <tbody>, que siempre es el mismo elemento.
+$("#tabla-clientes").addEventListener("click", (e) => {
+  const boton = e.target.closest(".btn-editar-cliente");
+  if (boton) editarCliente(boton.dataset.id);
+});
+
+$("#btn-cancelar-edicion-cliente").addEventListener("click", salirDeEdicionCliente);
+// El botón «Limpiar» de ui.js también saca del modo edición
+$("#form-cliente").addEventListener("limpiado", salirDeEdicionCliente);
+
 $("#form-cliente").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = new FormData(e.target);
-  cargando(true, "Guardando cliente…");
+  const id = f.get("cliente_id");           // vacío = alta, con valor = edición
+  const datos = {
+    nombre: f.get("nombre"),
+    categoria: f.get("categoria"),
+    estado: f.get("estado"),
+    frecuencia: f.get("frecuencia"),
+    activo: f.get("activo") === "on",
+    cobro_por_recoleccion: f.get("cobro_por_recoleccion") === "on",
+  };
+
+  cargando(true, id ? "Actualizando cliente…" : "Guardando cliente…");
   try {
-    const r = await API.post("/api/clientes", {
-      nombre: f.get("nombre"),
-      categoria: f.get("categoria"),
-      estado: f.get("estado"),
-      frecuencia: f.get("frecuencia"),
-      activo: f.get("activo") === "on",
-      cobro_por_recoleccion: f.get("cobro_por_recoleccion") === "on",
-    });
+    const r = id
+      ? await API.put(`/api/clientes/${id}`, datos)
+      : await API.post("/api/clientes", datos);
     avisar(r.mensaje);
-    e.target.reset();
-    CLIENTES = await API.get("/api/clientes");
-    llenarSelect($("#sel-cliente-servicio"), CLIENTES, {
-      valorCampo: "id",
-      textoCampo: (c) => `${c.nombre} (${c.categoria} · ${c.estado})`,
-    });
-    pintarClientes();
+    salirDeEdicionCliente();
+    await recargarClientes();
   } catch (error) {
     avisar(error.message, "danger");
   } finally {
