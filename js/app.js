@@ -98,8 +98,8 @@ function llenarSelect(elemento, valores, opciones = {}) {
 const VALOR_NUEVA_OPCION = "__nueva__";
 
 const CATALOGOS_AMPLIABLES = {
-  "#sel-categoria":  { catalogo: "categorias",  etiqueta: "categoría" },
-  "#sel-estado":     { catalogo: "estados",     etiqueta: "estado" },
+  "#sel-categoria": { catalogo: "categorias", etiqueta: "categoría" },
+  "#sel-estado": { catalogo: "estados", etiqueta: "estado" },
   "#sel-frecuencia": { catalogo: "frecuencias", etiqueta: "frecuencia" },
 };
 
@@ -336,8 +336,8 @@ async function iniciar() {
 // Dashboard
 // ---------------------------------------------------------------------------
 const CLAVES_FILTRO = ["anio", "trimestre", "mes", "semana", "estado",
-                       "categoria", "cliente", "frecuencia", "responsable",
-                       "tipo", "gravedad"];
+  "categoria", "cliente", "frecuencia", "responsable",
+  "tipo", "gravedad"];
 const ETIQUETAS_FILTRO = {
   anio: "Año", trimestre: "Trimestre", mes: "Mes", semana: "Semana",
   estado: "Estado", categoria: "Categoría", cliente: "Cliente",
@@ -424,10 +424,10 @@ function construirFiltros(opciones, seleccion) {
 // Paleta de las tarjetas de indicador. El verde y el azul son corporativos;
 // el rojo y el naranja se reservan para lo que exige atención operativa.
 const TONOS_KPI = {
-  verde:   ["var(--verde)",       "var(--verde-claro)"],
-  azul:    ["var(--azul)",        "var(--azul-claro)"],
-  rojo:    ["var(--grav-rojo)",   "var(--peligro-fondo)"],
-  naranja: ["var(--grav-naranja)","var(--aviso-fondo)"],
+  verde: ["var(--verde)", "var(--verde-claro)"],
+  azul: ["var(--azul)", "var(--azul-claro)"],
+  rojo: ["var(--grav-rojo)", "var(--peligro-fondo)"],
+  naranja: ["var(--grav-naranja)", "var(--aviso-fondo)"],
 };
 
 /**
@@ -450,60 +450,60 @@ function pintarKPIs(k) {
   // [clave, valor, nombre, icono, tono, nota breve, texto del tooltip]
   const tarjetas = [
     ["total_servicios", k.total_servicios, "Servicios registrados", "camion", "azul",
-     "Base de cálculo de todos los porcentajes.",
-     "Servicios de recolección registrados en el periodo filtrado, con y sin incidencias."],
+      "Base de cálculo de todos los porcentajes.",
+      "Servicios de recolección registrados en el periodo filtrado, con y sin incidencias."],
 
     ["total_incidencias", k.total_incidencias, "Total de incidencias", "incidencia", "rojo",
-     "Incidencias documentadas en el periodo.",
-     "Suma de incidencias registradas sobre los servicios del periodo filtrado."],
+      "Incidencias documentadas en el periodo.",
+      "Suma de incidencias registradas sobre los servicios del periodo filtrado."],
 
     ["pct_sin_incidencia", k.pct_sin_incidencia, "Recolecciones sin incidencias", "check", "verde",
-     "Servicios que salieron limpios.",
-     "Porcentaje de servicios que se completaron sin ninguna incidencia asociada."],
+      "Servicios que salieron limpios.",
+      "Porcentaje de servicios que se completaron sin ninguna incidencia asociada."],
 
     ["pct_con_incidencia", k.pct_con_incidencia, "Servicios con incidencia", "porcentaje", "naranja",
-     "Complemento del indicador anterior.",
-     "Porcentaje de servicios que tuvieron al menos una incidencia."],
+      "Complemento del indicador anterior.",
+      "Porcentaje de servicios que tuvieron al menos una incidencia."],
 
     ["pct_a_tiempo", k.pct_a_tiempo, "Resueltas a tiempo", "reloj", "verde",
-     "Sobre las incidencias ya cerradas.",
-     "De las incidencias resueltas, cuántas se cerraron dentro del plazo esperado."],
+      "Sobre las incidencias ya cerradas.",
+      "De las incidencias resueltas, cuántas se cerraron dentro del plazo esperado."],
 
     ["retrasos", `${k.retrasos} (${k.pct_retrasos})`, "Total de retrasos", "reloj", "naranja",
-     "Servicios que llegaron tarde.",
-     "Número de incidencias con tiempo de retraso registrado y su peso sobre el total."],
+      "Servicios que llegaron tarde.",
+      "Número de incidencias con tiempo de retraso registrado y su peso sobre el total."],
 
     ["vueltas", `${k.vueltas} (${k.pct_vueltas})`, "Vueltas adicionales", "repetir", "naranja",
-     "Recolecciones extra que hubo que hacer.",
-     "Vueltas adicionales generadas por incidencias y su peso sobre el total."],
+      "Recolecciones extra que hubo que hacer.",
+      "Vueltas adicionales generadas por incidencias y su peso sobre el total."],
 
     ["quejas", k.quejas, "Reportes del cliente", "megafono", "rojo",
-     "Casos que el cliente escaló.",
-     "Incidencias en las que el cliente presentó un reporte o queja. El seguimiento lo llevan RH y jefatura."],
+      "Casos que el cliente escaló.",
+      "Incidencias en las que el cliente presentó un reporte o queja. El seguimiento lo llevan RH y jefatura."],
 
     ["pct_quejas", k.pct_quejas, "% de quejas", "porcentaje", "rojo",
-     "Proporción de casos escalados.",
-     "Porcentaje de incidencias que derivaron en un reporte del cliente."],
+      "Proporción de casos escalados.",
+      "Porcentaje de incidencias que derivaron en un reporte del cliente."],
 
     ["inci_prioritarios", k.inci_prioritarios, "Clientes prioritarios afectados", "alerta", "rojo",
-     "Walmart, Bodega y Sam's.",
-     "Incidencias registradas en clientes con cobro por recolección, donde el impacto comercial es mayor."],
+      "Walmart, Bodega y Sam's.",
+      "Incidencias registradas en clientes con cobro por recolección, donde el impacto comercial es mayor."],
 
     ["segundas_vueltas", k.segundas_vueltas, "2ª vueltas no cobrables", "repetir", "rojo",
-     "Costo operativo que no se recupera.",
-     "Segundas vueltas realizadas en clientes prioritarios que no se pueden facturar."],
+      "Costo operativo que no se recupera.",
+      "Segundas vueltas realizadas en clientes prioritarios que no se pueden facturar."],
 
     ["abiertas", k.abiertas, "Incidencias abiertas", "pendientes", "naranja",
-     "Pendientes de cierre.",
-     "Incidencias que todavía no se marcan como resueltas."],
+      "Pendientes de cierre.",
+      "Incidencias que todavía no se marcan como resueltas."],
 
     ["cerradas", k.cerradas, "Incidencias cerradas", "candado", "verde",
-     "Casos ya resueltos.",
-     "Incidencias marcadas como resueltas en el periodo filtrado."],
+      "Casos ya resueltos.",
+      "Incidencias marcadas como resueltas en el periodo filtrado."],
 
     ["tiempo_promedio", k.tiempo_promedio, "Resolución promedio", "reloj", "azul",
-     "Tiempo medio hasta el cierre.",
-     "Promedio de tiempo transcurrido entre el registro y la resolución de una incidencia."],
+      "Tiempo medio hasta el cierre.",
+      "Promedio de tiempo transcurrido entre el registro y la resolución de una incidencia."],
   ];
 
   $("#tarjetas-kpi").className = "rejilla-kpi animar-escalonado";
@@ -544,8 +544,8 @@ function pintarGraficas(graficas) {
 
   // Primero la tendencia (lo que más se consulta), luego los desgloses
   const orden = ["tendencia_mensual", "tendencia_semanal",
-                 "por_tipo", "por_gravedad", "por_cliente", "por_categoria",
-                 "por_estado", "prioritarios", "frecuencia_vs_incidencias"];
+    "por_tipo", "por_gravedad", "por_cliente", "por_categoria",
+    "por_estado", "prioritarios", "frecuencia_vs_incidencias"];
 
   let dibujadas = 0;
   for (const nombre of orden) {
@@ -575,9 +575,9 @@ function pintarGraficas(graficas) {
     contenedor.appendChild(tarjeta);
 
     Plotly.newPlot(`g-${nombre}`,
-                   datos,
-                   UI?.temaGrafica(layout, datos) || layout,
-                   UI?.CONFIG_GRAFICA || { responsive: true, displayModeBar: false });
+      datos,
+      UI?.temaGrafica(layout, datos) || layout,
+      UI?.CONFIG_GRAFICA || { responsive: true, displayModeBar: false });
 
     // Se vigila el contenedor: al contraer el menú o plegar los filtros
     // cambia el ancho sin que cambie el de la ventana.
@@ -644,11 +644,19 @@ function pintarDetalle(incidencias) {
       <td data-etiqueta="Evidencias">${enlaces}</td>
       <td data-etiqueta="Comentarios" class="celda-larga">${esc(i.comentarios)}</td>
       <td data-etiqueta="Acciones">
-        <button class="btn btn-contorno btn-sm btn-editar-incidencia" type="button"
-                data-id="${esc(i.id)}"
-                aria-label="Editar la incidencia de ${esc(i.cliente)} del ${esc(i.fecha)}">
-          ${UI?.icono("editar", "ico ico-sm") || ""}Editar
-        </button></td>
+        <div class="fila-acciones">
+          <button class="btn btn-contorno btn-sm btn-editar-incidencia" type="button"
+                  data-id="${esc(i.id)}"
+                  aria-label="Editar la incidencia de ${esc(i.cliente)} del ${esc(i.fecha)}">
+            ${UI?.icono("editar", "ico ico-sm") || ""}Editar
+          </button>
+          <button class="btn btn-sm btn-outline-danger" type="button"
+                  onclick="eliminarIncidencia('${esc(i.id)}')"
+                  aria-label="Eliminar la incidencia de ${esc(i.cliente)} del ${esc(i.fecha)}">
+            ${UI?.icono("x", "ico ico-sm") || ""}Eliminar
+          </button>
+        </div>
+      </td>
     </tr>`;
   }).join("");
 
@@ -989,6 +997,11 @@ async function cargarPendientes() {
                               aria-label="Editar la incidencia de ${esc(i.cliente)} del ${esc(i.fecha)}">
                         ${UI?.icono("editar", "ico ico-sm") || ""}Editar
                       </button>
+                      <button class="btn btn-sm btn-outline-danger" type="button"
+                              onclick="eliminarIncidencia('${esc(i.id)}')"
+                              aria-label="Eliminar la incidencia de ${esc(i.cliente)} del ${esc(i.fecha)}">
+                        ${UI?.icono("x", "ico ico-sm") || ""}Eliminar
+                      </button>
                     </div></td>
                 </tr>`).join("")}
             </tbody>
@@ -1003,6 +1016,26 @@ async function cargarPendientes() {
     avisar(error.message, "danger");
   } finally {
     cargando(false);
+  }
+}
+
+async function eliminarIncidencia(id) {
+  if (!confirm("¿Estás seguro de que deseas eliminar esta incidencia? Esta acción no se puede deshacer.")) {
+    return;
+  }
+
+  try {
+    const respuesta = await API.peticion(`/api/incidencias/${id}`, {
+      method: 'DELETE'
+    });
+
+    // Usamos la función de avisos nativa de app.js en lugar de alert()
+    avisar("Incidencia eliminada correctamente.");
+    cargarPendientes();
+
+  } catch (error) {
+    console.error("Error al eliminar:", error);
+    avisar("No se pudo eliminar la incidencia. Revisa la consola.", "danger");
   }
 }
 
@@ -1045,10 +1078,10 @@ function pintarClientes() {
           ${UI?.icono(c.activo ? "check" : "x", "ico ico-sm") || ""}${esc(c.estatus)}</span></td>
       <td data-etiqueta="Cobro por recolección">
         ${c.cobro_por_recoleccion
-          ? `<span class="etiqueta etiqueta-aviso"
+      ? `<span class="etiqueta etiqueta-aviso"
                    data-tip="Cliente prioritario: las incidencias aquí tienen mayor impacto comercial." tabindex="0">
                ${UI?.icono("alerta", "ico ico-sm") || ""}Sí</span>`
-          : '<span class="etiqueta etiqueta-neutra">No</span>'}</td>
+      : '<span class="etiqueta etiqueta-neutra">No</span>'}</td>
       <td data-etiqueta="Acciones">
         <button class="btn btn-contorno btn-sm btn-editar-cliente" type="button"
                 data-id="${esc(c.id)}"
