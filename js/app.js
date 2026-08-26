@@ -288,7 +288,7 @@ async function iniciar() {
 
     // Poblar los selectores fijos
     llenarSelect($("#sel-tipo-servicio"), CATALOGOS.tipos_servicio);
-    llenarSelect($("#sel-resultado"), CATALOGOS.resultados);
+    // llenarSelect($("#sel-resultado"), CATALOGOS.resultados);
     // Estos tres admiten «+ Agregar nueva opción…» al final de la lista
     llenarSelectAmpliable("#sel-categoria", CATALOGOS.categorias);
     llenarSelectAmpliable("#sel-estado", CATALOGOS.estados);
