@@ -716,7 +716,7 @@ $("#form-servicio").addEventListener("submit", async (e) => {
 // ---------------------------------------------------------------------------
 async function cargarServiciosEnSelect() {
   try {
-    SERVICIOS = await API.get("/api/servicios?limite=60");
+    SERVICIOS = await API.get("/api/servicios");
     llenarSelect($("#sel-servicio"), SERVICIOS, {
       valorCampo: "id",
       textoCampo: (s) => `${s.fecha} | ${s.cliente} | ${s.tipo_servicio}`,
